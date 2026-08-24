@@ -81,9 +81,11 @@ export default async function EditarLlamadoPage({ params }: PageProps) {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
-              <label className={labelClass}>UOC</label>
-              <select name="uoc_id" className={inputClass} defaultValue={llamado.uoc_id ?? ""}>
-                <option value="">— Sin definir —</option>
+              <label className={labelClass}>UOC *</label>
+              <select name="uoc_id" required className={inputClass} defaultValue={llamado.uoc_id ?? ""}>
+                <option value="" disabled>
+                  — Seleccionar —
+                </option>
                 {uocs?.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.entidad} / {u.uoc}
@@ -300,4 +302,3 @@ export default async function EditarLlamadoPage({ params }: PageProps) {
     </div>
   );
 }
-
