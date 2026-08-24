@@ -1,6 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
+import { crearLineaPresupuestaria, eliminarLineaPresupuestaria } from "../actions";
+
+const inputClass =
+  "mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
+const labelClass = "block text-xs font-medium text-slate-500";
 
 function formatMonto(monto: number | null, moneda: string) {
   if (monto === null || monto === undefined) return "—";
@@ -84,7 +89,7 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
     notFound();
   }
 
-  const [{ data: lineas }, { data: cronograma }] = await Promise.all([
+  const [{ data: lineas }, { data: cronograma }, { data: objetosGasto }] = await Promise.all([
     supabase
       .from("llamado_linea_presupuestaria")
       .select(
@@ -97,7 +102,10 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
       .select("id, etapa_nombre, orden, fase, fecha_original, fecha_revisada, fecha_real, nro_memo, nro_nota, detalle")
       .eq("llamado_id", id)
       .order("orden"),
+    supabase.from("objeto_gasto").select("id, codigo, descripcion").order("codigo"),
   ]);
+
+  const crearLineaConId = crearLineaPresupuestaria.bind(null, id);
 
   const modalidad = llamado.modalidad as unknown as { nombre: string; organismo_financiador: string } | null;
   const componente = llamado.componente as unknown as { nombre: string; subcomponente: string | null } | null;
@@ -120,7 +128,15 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
               {llamado.nombre_llamado || llamado.objeto_llamado}
             </p>
           </div>
-          <EstadoBadge estado={llamado.estado_step} />
+          <div className="flex items-center gap-3">
+            <EstadoBadge estado={llamado.estado_step} />
+            <Link
+              href={`/planificacion/${id}/editar`}
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Editar
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -204,11 +220,13 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Departamento</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Estructura presupuestaria</th>
                     <th className="px-3 py-2 text-right font-medium text-slate-500">Monto</th>
+                    <th className="px-3 py-2"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {lineas.map((l) => {
                     const objetoGasto = l.objeto_gasto as unknown as { codigo: string; descripcion: string } | null;
+                    const eliminarConIds = eliminarLineaPresupuestaria.bind(null, l.id, id);
                     return (
                       <tr key={l.id} className="hover:bg-slate-50">
                         <td className="px-3 py-2 text-slate-700">{l.ejercicio_fiscal ?? "—"}</td>
@@ -224,6 +242,13 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
                         <td className="px-3 py-2 text-right font-medium text-slate-800">
                           {formatMonto(l.monto, llamado.moneda)}
                         </td>
+                        <td className="px-3 py-2 text-right">
+                          <form action={eliminarConIds}>
+                            <button type="submit" className="text-xs text-red-600 hover:underline">
+                              Eliminar
+                            </button>
+                          </form>
+                        </td>
                       </tr>
                     );
                   })}
@@ -231,6 +256,69 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
               </table>
             </div>
           )}
+
+          <details className="mt-4 rounded-md border border-slate-200">
+            <summary className="cursor-pointer px-4 py-2 text-sm font-medium text-blue-600">
+              + Agregar línea presupuestaria
+            </summary>
+            <form action={crearLineaConId} className="grid grid-cols-1 gap-3 border-t border-slate-200 p-4 sm:grid-cols-3">
+              <div>
+                <label className={labelClass}>Ejercicio fiscal</label>
+                <input name="ejercicio_fiscal" type="number" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Programa</label>
+                <input name="programa" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Proyecto/Actividad</label>
+                <input name="proyecto_actividad" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>SGOG</label>
+                <input name="sgog" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Objeto del gasto</label>
+                <select name="objeto_gasto_id" className={inputClass} defaultValue="">
+                  <option value="">— Sin definir —</option>
+                  {objetosGasto?.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.codigo} · {o.descripcion}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>Fuente de financiamiento</label>
+                <input name="fuente_financiamiento" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Organismo financiador</label>
+                <input name="organismo_financiador" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Departamento</label>
+                <input name="departamento" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Estructura presupuestaria (SIAF)</label>
+                <input name="estructura_presupuestaria" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Monto *</label>
+                <input name="monto" type="number" step="0.01" required className={inputClass} />
+              </div>
+              <div className="flex items-end sm:col-span-3">
+                <button
+                  type="submit"
+                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                >
+                  Agregar línea
+                </button>
+              </div>
+            </form>
+          </details>
         </section>
 
         {/* Cronograma de etapas */}
@@ -293,4 +381,3 @@ function Campo({ label, valor }: { label: string; valor?: string | null }) {
     </div>
   );
 }
-
