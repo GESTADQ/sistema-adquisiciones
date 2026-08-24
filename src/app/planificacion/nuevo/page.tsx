@@ -58,9 +58,11 @@ export default async function NuevoLlamadoPage() {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
-              <label className={labelClass}>UOC</label>
-              <select name="uoc_id" className={inputClass} defaultValue="">
-                <option value="">— Sin definir —</option>
+              <label className={labelClass}>UOC *</label>
+              <select name="uoc_id" required className={inputClass} defaultValue="">
+                <option value="" disabled>
+                  — Seleccionar —
+                </option>
                 {uocs?.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.entidad} / {u.uoc}
