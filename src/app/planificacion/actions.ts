@@ -151,3 +151,79 @@ export async function eliminarLineaPresupuestaria(id: string, llamadoId: string)
   revalidatePath(`/planificacion/${llamadoId}`);
   redirect(`/planificacion/${llamadoId}`);
 }
+
+export async function crearEtapaCronograma(llamadoId: string, formData: FormData) {
+  const supabase = await createClient();
+
+  const etapaNombre = str(formData, "etapa_nombre");
+  if (!etapaNombre) {
+    throw new Error("Debe indicar el nombre de la etapa.");
+  }
+
+  const payload = {
+    llamado_id: llamadoId,
+    etapa_nombre: etapaNombre,
+    fase: str(formData, "fase"),
+    orden: num(formData, "orden"),
+    fecha_original: str(formData, "fecha_original"),
+    fecha_revisada: str(formData, "fecha_revisada"),
+    fecha_real: str(formData, "fecha_real"),
+    responsable: str(formData, "responsable"),
+    nro_memo: str(formData, "nro_memo"),
+    nro_nota: str(formData, "nro_nota"),
+    detalle: str(formData, "detalle"),
+  };
+
+  const { error } = await supabase.from("cronograma_etapa").insert(payload);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath(`/planificacion/${llamadoId}`);
+  redirect(`/planificacion/${llamadoId}`);
+}
+
+export async function actualizarEtapaCronograma(id: string, llamadoId: string, formData: FormData) {
+  const supabase = await createClient();
+
+  const etapaNombre = str(formData, "etapa_nombre");
+  if (!etapaNombre) {
+    throw new Error("Debe indicar el nombre de la etapa.");
+  }
+
+  const payload = {
+    etapa_nombre: etapaNombre,
+    fase: str(formData, "fase"),
+    orden: num(formData, "orden"),
+    fecha_original: str(formData, "fecha_original"),
+    fecha_revisada: str(formData, "fecha_revisada"),
+    fecha_real: str(formData, "fecha_real"),
+    responsable: str(formData, "responsable"),
+    nro_memo: str(formData, "nro_memo"),
+    nro_nota: str(formData, "nro_nota"),
+    detalle: str(formData, "detalle"),
+  };
+
+  const { error } = await supabase.from("cronograma_etapa").update(payload).eq("id", id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath(`/planificacion/${llamadoId}`);
+  redirect(`/planificacion/${llamadoId}`);
+}
+
+export async function eliminarEtapaCronograma(id: string, llamadoId: string) {
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("cronograma_etapa").delete().eq("id", id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath(`/planificacion/${llamadoId}`);
+  redirect(`/planificacion/${llamadoId}`);
+}
