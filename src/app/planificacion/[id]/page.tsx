@@ -100,7 +100,7 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
     notFound();
   }
 
-  const [{ data: lineas }, { data: cronograma }, { data: objetosGasto }] = await Promise.all([
+  const [{ data: lineas }, { data: cronograma }, { data: objetosGasto }, { data: usuarios }] = await Promise.all([
     supabase
       .from("llamado_linea_presupuestaria")
       .select(
@@ -111,11 +111,12 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
     supabase
       .from("cronograma_etapa")
       .select(
-        "id, etapa_nombre, orden, fase, fecha_original, fecha_revisada, fecha_real, responsable, nro_memo, nro_nota, detalle"
+        "id, etapa_nombre, orden, fase, fecha_original, fecha_revisada, fecha_real, responsable:responsable(id, nombre), nro_memo, nro_nota, detalle"
       )
       .eq("llamado_id", id)
       .order("orden"),
     supabase.from("objeto_gasto").select("id, codigo, descripcion").order("codigo"),
+    supabase.from("usuario").select("id, nombre").order("nombre"),
   ]);
 
   const crearLineaConId = crearLineaPresupuestaria.bind(null, id);
@@ -367,6 +368,7 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
                     const formId = `etapa-${e.id}`;
                     const actualizarConIds = actualizarEtapaCronograma.bind(null, e.id, id);
                     const eliminarConIds = eliminarEtapaCronograma.bind(null, e.id, id);
+                    const responsable = e.responsable as unknown as { id: string; nombre: string } | null;
                     return (
                       <tr key={e.id} className="hover:bg-slate-50">
                         <td className="px-2 py-2">
@@ -419,12 +421,19 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
                           />
                         </td>
                         <td className="px-2 py-2">
-                          <input
+                          <select
                             form={formId}
                             name="responsable"
-                            defaultValue={e.responsable ?? ""}
-                            className={`${inputClass} w-28`}
-                          />
+                            defaultValue={responsable?.id ?? ""}
+                            className={`${inputClass} w-32`}
+                          >
+                            <option value="">— Sin definir —</option>
+                            {usuarios?.map((u) => (
+                              <option key={u.id} value={u.id}>
+                                {u.nombre}
+                              </option>
+                            ))}
+                          </select>
                         </td>
                         <td className="px-2 py-2">
                           <input form={formId} name="nro_memo" defaultValue={e.nro_memo ?? ""} className={`${inputClass} w-24`} />
@@ -487,7 +496,14 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
               </div>
               <div>
                 <label className={labelClass}>Responsable</label>
-                <input name="responsable" className={inputClass} />
+                <select name="responsable" className={inputClass} defaultValue="">
+                  <option value="">— Sin definir —</option>
+                  {usuarios?.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.nombre}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className={labelClass}>N° memo</label>
