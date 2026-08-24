@@ -1,7 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { crearLineaPresupuestaria, eliminarLineaPresupuestaria } from "../actions";
+import {
+  crearLineaPresupuestaria,
+  eliminarLineaPresupuestaria,
+  crearEtapaCronograma,
+  actualizarEtapaCronograma,
+  eliminarEtapaCronograma,
+} from "../actions";
 
 const inputClass =
   "mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
@@ -19,6 +25,11 @@ function formatMonto(monto: number | null, moneda: string) {
 function formatFecha(fecha: string | null) {
   if (!fecha) return "—";
   return new Intl.DateTimeFormat("es-PY", { dateStyle: "medium" }).format(new Date(fecha));
+}
+
+function toDateInputValue(fecha: string | null) {
+  if (!fecha) return "";
+  return fecha.slice(0, 10);
 }
 
 const ESTADO_COLOR: Record<string, string> = {
@@ -99,13 +110,16 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
       .order("ejercicio_fiscal"),
     supabase
       .from("cronograma_etapa")
-      .select("id, etapa_nombre, orden, fase, fecha_original, fecha_revisada, fecha_real, nro_memo, nro_nota, detalle")
+      .select(
+        "id, etapa_nombre, orden, fase, fecha_original, fecha_revisada, fecha_real, responsable, nro_memo, nro_nota, detalle"
+      )
       .eq("llamado_id", id)
       .order("orden"),
     supabase.from("objeto_gasto").select("id, codigo, descripcion").order("codigo"),
   ]);
 
   const crearLineaConId = crearLineaPresupuestaria.bind(null, id);
+  const crearEtapaConId = crearEtapaCronograma.bind(null, id);
 
   const modalidad = llamado.modalidad as unknown as { nombre: string; organismo_financiador: string } | null;
   const componente = llamado.componente as unknown as { nombre: string; subcomponente: string | null } | null;
@@ -333,32 +347,108 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
               <table className="min-w-full divide-y divide-slate-200 text-sm">
                 <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-3 py-2 text-left font-medium text-slate-500">Etapa</th>
-                    <th className="px-3 py-2 text-left font-medium text-slate-500">Fase</th>
-                    <th className="px-3 py-2 text-left font-medium text-slate-500">Fecha original</th>
-                    <th className="px-3 py-2 text-left font-medium text-slate-500">Fecha revisada</th>
-                    <th className="px-3 py-2 text-left font-medium text-slate-500">Fecha real</th>
-                    <th className="px-3 py-2 text-left font-medium text-slate-500">Estado</th>
-                    <th className="px-3 py-2 text-left font-medium text-slate-500">Referencia</th>
+                    <th className="px-2 py-2 text-left font-medium text-slate-500">Etapa</th>
+                    <th className="px-2 py-2 text-left font-medium text-slate-500">Fase</th>
+                    <th className="px-2 py-2 text-left font-medium text-slate-500">Orden</th>
+                    <th className="px-2 py-2 text-left font-medium text-slate-500">F. original</th>
+                    <th className="px-2 py-2 text-left font-medium text-slate-500">F. revisada</th>
+                    <th className="px-2 py-2 text-left font-medium text-slate-500">F. real</th>
+                    <th className="px-2 py-2 text-left font-medium text-slate-500">Responsable</th>
+                    <th className="px-2 py-2 text-left font-medium text-slate-500">N° memo</th>
+                    <th className="px-2 py-2 text-left font-medium text-slate-500">N° nota</th>
+                    <th className="px-2 py-2 text-left font-medium text-slate-500">Detalle</th>
+                    <th className="px-2 py-2 text-left font-medium text-slate-500">Estado</th>
+                    <th className="px-2 py-2"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {cronograma.map((e) => {
                     const estado = cronogramaEstado(e);
+                    const formId = `etapa-${e.id}`;
+                    const actualizarConIds = actualizarEtapaCronograma.bind(null, e.id, id);
+                    const eliminarConIds = eliminarEtapaCronograma.bind(null, e.id, id);
                     return (
                       <tr key={e.id} className="hover:bg-slate-50">
-                        <td className="px-3 py-2 font-medium text-slate-800">{e.etapa_nombre}</td>
-                        <td className="px-3 py-2 text-slate-600">{e.fase}</td>
-                        <td className="px-3 py-2 text-slate-600">{formatFecha(e.fecha_original)}</td>
-                        <td className="px-3 py-2 text-slate-600">{formatFecha(e.fecha_revisada)}</td>
-                        <td className="px-3 py-2 text-slate-600">{formatFecha(e.fecha_real)}</td>
-                        <td className="px-3 py-2">
+                        <td className="px-2 py-2">
+                          <form id={formId} action={actualizarConIds} />
+                          <input
+                            form={formId}
+                            name="etapa_nombre"
+                            required
+                            defaultValue={e.etapa_nombre ?? ""}
+                            className={`${inputClass} w-36`}
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <input form={formId} name="fase" defaultValue={e.fase ?? ""} className={`${inputClass} w-24`} />
+                        </td>
+                        <td className="px-2 py-2">
+                          <input
+                            form={formId}
+                            name="orden"
+                            type="number"
+                            defaultValue={e.orden ?? ""}
+                            className={`${inputClass} w-16`}
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <input
+                            form={formId}
+                            name="fecha_original"
+                            type="date"
+                            defaultValue={toDateInputValue(e.fecha_original)}
+                            className={`${inputClass} w-36`}
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <input
+                            form={formId}
+                            name="fecha_revisada"
+                            type="date"
+                            defaultValue={toDateInputValue(e.fecha_revisada)}
+                            className={`${inputClass} w-36`}
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <input
+                            form={formId}
+                            name="fecha_real"
+                            type="date"
+                            defaultValue={toDateInputValue(e.fecha_real)}
+                            className={`${inputClass} w-36`}
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <input
+                            form={formId}
+                            name="responsable"
+                            defaultValue={e.responsable ?? ""}
+                            className={`${inputClass} w-28`}
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <input form={formId} name="nro_memo" defaultValue={e.nro_memo ?? ""} className={`${inputClass} w-24`} />
+                        </td>
+                        <td className="px-2 py-2">
+                          <input form={formId} name="nro_nota" defaultValue={e.nro_nota ?? ""} className={`${inputClass} w-24`} />
+                        </td>
+                        <td className="px-2 py-2">
+                          <input form={formId} name="detalle" defaultValue={e.detalle ?? ""} className={`${inputClass} w-36`} />
+                        </td>
+                        <td className="px-2 py-2">
                           <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${estado.color}`}>
                             {estado.label}
                           </span>
                         </td>
-                        <td className="px-3 py-2 text-slate-500">
-                          {[e.nro_memo, e.nro_nota].filter(Boolean).join(" / ") || "—"}
+                        <td className="px-2 py-2 whitespace-nowrap">
+                          <button form={formId} type="submit" className="mr-2 text-xs text-blue-600 hover:underline">
+                            Guardar
+                          </button>
+                          <form action={eliminarConIds} className="inline">
+                            <button type="submit" className="text-xs text-red-600 hover:underline">
+                              Eliminar
+                            </button>
+                          </form>
                         </td>
                       </tr>
                     );
@@ -367,6 +457,60 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
               </table>
             </div>
           )}
+
+          <details className="mt-4 rounded-md border border-slate-200">
+            <summary className="cursor-pointer px-4 py-2 text-sm font-medium text-blue-600">+ Agregar etapa</summary>
+            <form action={crearEtapaConId} className="grid grid-cols-1 gap-3 border-t border-slate-200 p-4 sm:grid-cols-3">
+              <div>
+                <label className={labelClass}>Etapa *</label>
+                <input name="etapa_nombre" required className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Fase</label>
+                <input name="fase" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Orden</label>
+                <input name="orden" type="number" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Fecha original</label>
+                <input name="fecha_original" type="date" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Fecha revisada</label>
+                <input name="fecha_revisada" type="date" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Fecha real</label>
+                <input name="fecha_real" type="date" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Responsable</label>
+                <input name="responsable" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>N° memo</label>
+                <input name="nro_memo" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>N° nota</label>
+                <input name="nro_nota" className={inputClass} />
+              </div>
+              <div className="sm:col-span-3">
+                <label className={labelClass}>Detalle</label>
+                <input name="detalle" className={inputClass} />
+              </div>
+              <div className="flex items-end sm:col-span-3">
+                <button
+                  type="submit"
+                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                >
+                  Agregar etapa
+                </button>
+              </div>
+            </form>
+          </details>
         </section>
       </main>
     </div>
