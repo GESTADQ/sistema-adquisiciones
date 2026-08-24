@@ -42,10 +42,20 @@ export default async function PlanificacionPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="border-b border-slate-200 bg-white px-6 py-4">
-        <h1 className="text-lg font-semibold text-slate-900">Planificación — Plan de Adquisiciones</h1>
-        <p className="text-sm text-slate-500">
-          {llamados?.length ?? 0} llamados activos · Proyecto TAPE (BIRF 9517-PY)
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-lg font-semibold text-slate-900">Planificación — Plan de Adquisiciones</h1>
+            <p className="text-sm text-slate-500">
+              {llamados?.length ?? 0} llamados activos · Proyecto TAPE (BIRF 9517-PY)
+            </p>
+          </div>
+          <Link
+            href="/planificacion/nuevo"
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            + Nuevo llamado
+          </Link>
+        </div>
       </header>
 
       <main className="p-6">
