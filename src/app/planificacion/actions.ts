@@ -25,10 +25,15 @@ function bool(formData: FormData, key: string): boolean {
 export async function crearLlamado(formData: FormData) {
   const supabase = await createClient();
 
+  const uocId = str(formData, "uoc_id");
+  if (!uocId) {
+    throw new Error("Debe seleccionar una UOC.");
+  }
+
   const payload = {
     nro_pac: str(formData, "nro_pac"),
     nro_step: str(formData, "nro_step"),
-    uoc_id: str(formData, "uoc_id"),
+    uoc_id: uocId,
     modalidad_id: str(formData, "modalidad_id"),
     componente_id: str(formData, "componente_id"),
     objeto_llamado: str(formData, "objeto_llamado"),
@@ -63,10 +68,15 @@ export async function crearLlamado(formData: FormData) {
 export async function actualizarLlamado(id: string, formData: FormData) {
   const supabase = await createClient();
 
+  const uocId = str(formData, "uoc_id");
+  if (!uocId) {
+    throw new Error("Debe seleccionar una UOC.");
+  }
+
   const payload = {
     nro_pac: str(formData, "nro_pac"),
     nro_step: str(formData, "nro_step"),
-    uoc_id: str(formData, "uoc_id"),
+    uoc_id: uocId,
     modalidad_id: str(formData, "modalidad_id"),
     componente_id: str(formData, "componente_id"),
     objeto_llamado: str(formData, "objeto_llamado"),
@@ -141,4 +151,3 @@ export async function eliminarLineaPresupuestaria(id: string, llamadoId: string)
   revalidatePath(`/planificacion/${llamadoId}`);
   redirect(`/planificacion/${llamadoId}`);
 }
-
