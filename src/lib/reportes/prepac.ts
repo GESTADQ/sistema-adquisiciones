@@ -1,12 +1,14 @@
 import ExcelJS from "exceljs";
 import { createClient } from "@/lib/supabase/server";
 
-// Reporte PREPAC — un renglón por línea presupuestaria de cada llamado activo.
-// Formato acordado con Martin: Orden N°, Descripción, Tipo de procedimiento,
-// Fecha estimada, desglose presupuestario (Clase/Programa/Subprograma/
-// Proyecto-Actividad/SGOG/F.F./O.F./Dpto/Cuenta), Plurianual (SI/NO), montos
-// por ejercicio fiscal (columnas dinámicas según los ejercicios presentes en
-// los datos) y Total.
+// Reporte PREPAC — un renglón por llamado activo (no por línea presupuestaria:
+// un llamado plurianual tiene varias líneas, una por ejercicio fiscal, y todas
+// se consolidan en una sola fila repartiendo el monto en la columna del año
+// que corresponda). Formato acordado con Martin: Orden N°, Descripción, Tipo
+// de procedimiento, Fecha estimada, desglose presupuestario (Clase/Programa/
+// Subprograma/Proyecto-Actividad/SGOG/F.F./O.F./Dpto/Cuenta), Plurianual
+// (SI/NO), montos por ejercicio fiscal (columnas dinámicas según los
+// ejercicios presentes en los datos) y Total.
 
 type LineaPrepac = {
   monto: number | null;
@@ -99,65 +101,73 @@ export async function generarPrepacWorkbook(): Promise<ExcelJS.Workbook> {
 
   const header = [...HEADER_FIJO, ...ejercicios.map((e) => `Monto ${e}`), "Total"];
   sheet.addRow(header);
-  const headerRow = sheet.getRow(1);
-  headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
-  headerRow.fill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: "FF1E3A5F" },
-  };
-  headerRow.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
-  headerRow.height = 30;
+  // Estilo del encabezado: se aplica celda por celda (solo en las columnas usadas),
+  // no a headerRow.fill/font completos — eso pinta la fila entera hasta el límite de
+  // Excel y queda un bloque azul "flotando" a la derecha de la última columna real.
+  for (let col = 1; col <= header.length; col++) {
+    const cell = sheet.getCell(1, col);
+    cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E3A5F" } };
+    cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+  }
+  sheet.getRow(1).height = 30;
 
   for (const l of filas) {
     const lineas = l.llamado_linea_presupuestaria ?? [];
-    if (lineas.length === 0) {
-      // Llamado sin líneas presupuestarias cargadas: igual aparece, una fila con los datos
-      // generales y los montos por ejercicio en blanco.
-      sheet.addRow([
-        l.nro_pac ?? "",
-        l.nombre_llamado || l.objeto_llamado || "",
-        l.modalidad?.nombre ?? "",
-        formatFecha(l.fecha_estimada_llamado),
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        l.plurianualidad ? "SI" : "NO",
-        ...ejercicios.map(() => ""),
-        l.monto_total,
-      ]);
-      continue;
-    }
+
+    // Consolidar todas las líneas del llamado en una sola fila: sumar el monto de
+    // cada línea en la columna del ejercicio fiscal que le corresponde (si dos líneas
+    // caen en el mismo ejercicio, se suman) y tomar el desglose presupuestario
+    // (Clase/Programa/SGOG/etc.) de la primera línea que tenga cada dato cargado.
+    const montoPorEjercicio = new Map<number, number>();
+    let clase = "";
+    let programa = "";
+    let subprograma = "";
+    let proyectoActividad = "";
+    let sgog = "";
+    let fuenteFinanciamiento = "";
+    let organismoFinanciador = "";
+    let departamento = "";
+    let cuenta = "";
 
     for (const linea of lineas) {
-      const montosPorEjercicio = ejercicios.map((e) =>
-        linea.ejercicio_fiscal === e ? (linea.monto ?? 0) : ""
-      );
-      sheet.addRow([
-        l.nro_pac ?? "",
-        l.nombre_llamado || l.objeto_llamado || "",
-        l.modalidad?.nombre ?? "",
-        formatFecha(l.fecha_estimada_llamado),
-        linea.clase ?? "",
-        linea.programa ?? "",
-        linea.subprograma ?? "",
-        linea.proyecto_actividad ?? "",
-        linea.sgog ?? "",
-        linea.fuente_financiamiento ?? "",
-        linea.organismo_financiador ?? "",
-        linea.departamento ?? "",
-        linea.cuenta ?? "",
-        l.plurianualidad ? "SI" : "NO",
-        ...montosPorEjercicio,
-        l.monto_total,
-      ]);
+      if (linea.ejercicio_fiscal != null) {
+        montoPorEjercicio.set(
+          linea.ejercicio_fiscal,
+          (montoPorEjercicio.get(linea.ejercicio_fiscal) ?? 0) + (linea.monto ?? 0)
+        );
+      }
+      clase ||= linea.clase ?? "";
+      programa ||= linea.programa ?? "";
+      subprograma ||= linea.subprograma ?? "";
+      proyectoActividad ||= linea.proyecto_actividad ?? "";
+      sgog ||= linea.sgog ?? "";
+      fuenteFinanciamiento ||= linea.fuente_financiamiento ?? "";
+      organismoFinanciador ||= linea.organismo_financiador ?? "";
+      departamento ||= linea.departamento ?? "";
+      cuenta ||= linea.cuenta ?? "";
     }
+
+    const montosPorEjercicio = ejercicios.map((e) => montoPorEjercicio.get(e) ?? "");
+
+    sheet.addRow([
+      l.nro_pac ?? "",
+      l.nombre_llamado || l.objeto_llamado || "",
+      l.modalidad?.nombre ?? "",
+      formatFecha(l.fecha_estimada_llamado),
+      clase,
+      programa,
+      subprograma,
+      proyectoActividad,
+      sgog,
+      fuenteFinanciamiento,
+      organismoFinanciador,
+      departamento,
+      cuenta,
+      l.plurianualidad ? "SI" : "NO",
+      ...montosPorEjercicio,
+      l.monto_total,
+    ]);
   }
 
   // Formato numérico para las columnas de monto (dinámicas + Total).
