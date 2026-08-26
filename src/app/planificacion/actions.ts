@@ -22,6 +22,18 @@ function bool(formData: FormData, key: string): boolean {
   return formData.get(key) === "on";
 }
 
+function boolOrNull(formData: FormData, key: string): boolean | null {
+  const v = formData.get(key);
+  if (v === "true") return true;
+  if (v === "false") return false;
+  return null;
+}
+
+function calcularMontoEstimadoUsd(montoTotal: number, tipoCambio: number | null): number | null {
+  if (!tipoCambio || tipoCambio <= 0) return null;
+  return Math.round((montoTotal / tipoCambio) * 100) / 100;
+}
+
 export async function crearLlamado(formData: FormData) {
   const supabase = await createClient();
 
@@ -29,6 +41,9 @@ export async function crearLlamado(formData: FormData) {
   if (!uocId) {
     throw new Error("Debe seleccionar una UOC.");
   }
+
+  const montoTotal = num(formData, "monto_total") ?? 0;
+  const tipoCambio = num(formData, "tipo_cambio");
 
   const payload = {
     nro_pac: str(formData, "nro_pac"),
@@ -39,8 +54,8 @@ export async function crearLlamado(formData: FormData) {
     objeto_llamado: str(formData, "objeto_llamado"),
     nombre_llamado: str(formData, "nombre_llamado"),
     moneda: str(formData, "moneda") ?? "PYG",
-    monto_total: num(formData, "monto_total") ?? 0,
-    monto_estimado_usd: num(formData, "monto_estimado_usd"),
+    monto_total: montoTotal,
+    monto_estimado_usd: calcularMontoEstimadoUsd(montoTotal, tipoCambio),
     fecha_estimada_llamado: str(formData, "fecha_estimada_llamado"),
     estado_step: str(formData, "estado_step"),
     estado_actividad_step: str(formData, "estado_actividad_step"),
@@ -49,6 +64,14 @@ export async function crearLlamado(formData: FormData) {
     ambito_mercado: str(formData, "ambito_mercado"),
     plurianualidad: bool(formData, "plurianualidad"),
     ad_referendum: bool(formData, "ad_referendum"),
+    categoria_llamado: str(formData, "categoria_llamado"),
+    categoria_inversion: str(formData, "categoria_inversion"),
+    tipo_cambio: tipoCambio,
+    precalificacion: boolOrNull(formData, "precalificacion"),
+    proceso_contratacion: str(formData, "proceso_contratacion"),
+    opciones_evaluacion: str(formData, "opciones_evaluacion"),
+    riesgo_esas: str(formData, "riesgo_esas"),
+    tipo_documento_contratacion: str(formData, "tipo_documento_contratacion"),
   };
 
   const { data, error } = await supabase
@@ -73,6 +96,9 @@ export async function actualizarLlamado(id: string, formData: FormData) {
     throw new Error("Debe seleccionar una UOC.");
   }
 
+  const montoTotal = num(formData, "monto_total") ?? 0;
+  const tipoCambio = num(formData, "tipo_cambio");
+
   const payload = {
     nro_pac: str(formData, "nro_pac"),
     nro_step: str(formData, "nro_step"),
@@ -82,8 +108,8 @@ export async function actualizarLlamado(id: string, formData: FormData) {
     objeto_llamado: str(formData, "objeto_llamado"),
     nombre_llamado: str(formData, "nombre_llamado"),
     moneda: str(formData, "moneda") ?? "PYG",
-    monto_total: num(formData, "monto_total") ?? 0,
-    monto_estimado_usd: num(formData, "monto_estimado_usd"),
+    monto_total: montoTotal,
+    monto_estimado_usd: calcularMontoEstimadoUsd(montoTotal, tipoCambio),
     fecha_estimada_llamado: str(formData, "fecha_estimada_llamado"),
     estado_general: str(formData, "estado_general") ?? "Activo",
     estado_step: str(formData, "estado_step"),
@@ -98,6 +124,14 @@ export async function actualizarLlamado(id: string, formData: FormData) {
     ultimo_seguimiento: str(formData, "ultimo_seguimiento"),
     proxima_accion: str(formData, "proxima_accion"),
     observaciones: str(formData, "observaciones"),
+    categoria_llamado: str(formData, "categoria_llamado"),
+    categoria_inversion: str(formData, "categoria_inversion"),
+    tipo_cambio: tipoCambio,
+    precalificacion: boolOrNull(formData, "precalificacion"),
+    proceso_contratacion: str(formData, "proceso_contratacion"),
+    opciones_evaluacion: str(formData, "opciones_evaluacion"),
+    riesgo_esas: str(formData, "riesgo_esas"),
+    tipo_documento_contratacion: str(formData, "tipo_documento_contratacion"),
     actualizado_en: new Date().toISOString(),
   };
 
@@ -117,12 +151,15 @@ export async function crearLineaPresupuestaria(llamadoId: string, formData: Form
 
   const payload = {
     llamado_id: llamadoId,
+    clase: str(formData, "clase"),
     programa: str(formData, "programa"),
+    subprograma: str(formData, "subprograma"),
     proyecto_actividad: str(formData, "proyecto_actividad"),
     sgog: str(formData, "sgog"),
     fuente_financiamiento: str(formData, "fuente_financiamiento"),
     organismo_financiador: str(formData, "organismo_financiador"),
     departamento: str(formData, "departamento"),
+    cuenta: str(formData, "cuenta"),
     monto: num(formData, "monto") ?? 0,
     ejercicio_fiscal: num(formData, "ejercicio_fiscal"),
     estructura_presupuestaria: str(formData, "estructura_presupuestaria"),
@@ -219,6 +256,57 @@ export async function eliminarEtapaCronograma(id: string, llamadoId: string) {
   const supabase = await createClient();
 
   const { error } = await supabase.from("cronograma_etapa").delete().eq("id", id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath(`/planificacion/${llamadoId}`);
+  redirect(`/planificacion/${llamadoId}`);
+}
+
+export async function crearHito(llamadoId: string, tipoHito: string, formData: FormData) {
+  const supabase = await createClient();
+
+  const payload = {
+    llamado_id: llamadoId,
+    tipo_hito: tipoHito,
+    fecha_planificada: str(formData, "fecha_planificada"),
+    fecha_real: str(formData, "fecha_real"),
+  };
+
+  const { error } = await supabase.from("llamado_hito").insert(payload);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath(`/planificacion/${llamadoId}`);
+  redirect(`/planificacion/${llamadoId}`);
+}
+
+export async function actualizarHito(id: string, llamadoId: string, formData: FormData) {
+  const supabase = await createClient();
+
+  const payload = {
+    fecha_planificada: str(formData, "fecha_planificada"),
+    fecha_real: str(formData, "fecha_real"),
+  };
+
+  const { error } = await supabase.from("llamado_hito").update(payload).eq("id", id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath(`/planificacion/${llamadoId}`);
+  redirect(`/planificacion/${llamadoId}`);
+}
+
+export async function eliminarHito(id: string, llamadoId: string) {
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("llamado_hito").delete().eq("id", id);
 
   if (error) {
     throw new Error(error.message);
