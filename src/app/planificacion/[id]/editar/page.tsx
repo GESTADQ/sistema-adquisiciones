@@ -22,12 +22,13 @@ export default async function EditarLlamadoPage({ params }: PageProps) {
     redirect("/login");
   }
 
-  const [{ data: llamado, error }, { data: uocs }, { data: modalidades }, { data: componentes }] =
+  const [{ data: llamado, error }, { data: uocs }, { data: modalidades }, { data: componentes }, { data: objetosGasto }] =
     await Promise.all([
       supabase.from("llamado").select("*").eq("id", id).single(),
       supabase.from("entidad_uoc").select("id, entidad, uoc, sub_uoc").order("uoc"),
       supabase.from("modalidad").select("id, nombre").order("nombre"),
       supabase.from("componente_proyecto").select("id, nombre").order("nombre"),
+      supabase.from("objeto_gasto").select("id, codigo, descripcion").order("codigo"),
     ]);
 
   if (error || !llamado) {
@@ -143,6 +144,8 @@ export default async function EditarLlamadoPage({ params }: PageProps) {
           <CategoriaLlamadoCampos
             categoriaInicial={llamado.categoria_llamado}
             categoriaInversionInicial={llamado.categoria_inversion}
+            objetosGasto={objetosGasto ?? []}
+            objetoGastoInicial={llamado.objeto_gasto_id}
             tipoCambioInicial={llamado.tipo_cambio}
             montoEstimadoUsdActual={llamado.monto_estimado_usd}
             precalificacionInicial={llamado.precalificacion}
