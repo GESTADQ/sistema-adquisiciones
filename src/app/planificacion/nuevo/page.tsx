@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { crearLlamado } from "../actions";
+import CategoriaLlamadoCampos from "../CategoriaLlamadoCampos";
 
 const inputClass =
   "mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
@@ -95,9 +96,9 @@ export default async function NuevoLlamadoPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Monto total *</label>
+              <label className={labelClass}>Monto total (Gs.) *</label>
               <input name="monto_total" type="number" step="0.01" required className={inputClass} />
             </div>
             <div>
@@ -107,11 +108,9 @@ export default async function NuevoLlamadoPage() {
                 <option value="USD">USD</option>
               </select>
             </div>
-            <div>
-              <label className={labelClass}>Monto estimado (USD)</label>
-              <input name="monto_estimado_usd" type="number" step="0.01" className={inputClass} />
-            </div>
           </div>
+
+          <CategoriaLlamadoCampos />
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
