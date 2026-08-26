@@ -97,7 +97,8 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
        opciones_evaluacion, riesgo_esas, tipo_documento_contratacion,
        modalidad:modalidad_id(nombre, organismo_financiador),
        componente:componente_id(nombre, subcomponente),
-       uoc:uoc_id(entidad, uoc, sub_uoc)`
+       uoc:uoc_id(entidad, uoc, sub_uoc),
+       objeto_gasto:objeto_gasto_id(codigo, descripcion)`
     )
     .eq("id", id)
     .single();
@@ -111,7 +112,7 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
       supabase
         .from("llamado_linea_presupuestaria")
         .select(
-          "id, clase, programa, subprograma, proyecto_actividad, sgog, fuente_financiamiento, organismo_financiador, departamento, cuenta, monto, ejercicio_fiscal, estructura_presupuestaria"
+          "id, clase, programa, subprograma, proyecto_actividad, sgog, fuente_financiamiento, organismo_financiador, departamento, cuenta, monto, ejercicio_fiscal"
         )
         .eq("llamado_id", id)
         .order("ejercicio_fiscal"),
@@ -137,6 +138,7 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
   const modalidad = llamado.modalidad as unknown as { nombre: string; organismo_financiador: string } | null;
   const componente = llamado.componente as unknown as { nombre: string; subcomponente: string | null } | null;
   const uoc = llamado.uoc as unknown as { entidad: string; uoc: string; sub_uoc: string | null } | null;
+  const objetoGasto = llamado.objeto_gasto as unknown as { codigo: string; descripcion: string } | null;
 
   const totalLineas = (lineas ?? []).reduce((acc, l) => acc + (l.monto ?? 0), 0);
 
@@ -195,6 +197,10 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
             <Campo label="Ad referéndum" valor={llamado.ad_referendum ? "Sí" : "No"} />
             <Campo label="Categoría del llamado" valor={llamado.categoria_llamado} />
             <Campo label="Categoría de inversión" valor={llamado.categoria_inversion} />
+            <Campo
+              label="Objeto del gasto (catálogo)"
+              valor={objetoGasto ? `${objetoGasto.codigo} · ${objetoGasto.descripcion}` : undefined}
+            />
             <Campo label="Tipo de cambio" valor={llamado.tipo_cambio ? String(llamado.tipo_cambio) : undefined} />
           </dl>
           {llamado.categoria_llamado === "Bienes y Obras" && (
@@ -269,7 +275,6 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Fuente financ.</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Departamento</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Cuenta</th>
-                    <th className="px-3 py-2 text-left font-medium text-slate-500">Estructura presupuestaria</th>
                     <th className="px-3 py-2 text-right font-medium text-slate-500">Monto</th>
                     <th className="px-3 py-2"></th>
                   </tr>
@@ -288,7 +293,6 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
                         <td className="px-3 py-2 text-slate-600">{l.fuente_financiamiento ?? "—"}</td>
                         <td className="px-3 py-2 text-slate-600">{l.departamento ?? "—"}</td>
                         <td className="px-3 py-2 text-slate-600">{l.cuenta ?? "—"}</td>
-                        <td className="px-3 py-2 text-slate-500">{l.estructura_presupuestaria ?? "—"}</td>
                         <td className="px-3 py-2 text-right font-medium text-slate-800">
                           {formatMonto(l.monto, llamado.moneda)}
                         </td>
@@ -351,10 +355,6 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
               <div>
                 <label className={labelClass}>Cuenta</label>
                 <input name="cuenta" className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Estructura presupuestaria (SIAF)</label>
-                <input name="estructura_presupuestaria" className={inputClass} />
               </div>
               <div>
                 <label className={labelClass}>Monto *</label>
