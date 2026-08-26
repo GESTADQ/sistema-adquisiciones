@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CATEGORIAS_LLAMADO } from "@/lib/hitosStep";
+import { CATEGORIAS_INVERSION, valorCategoriaInversion } from "@/lib/categoriasInversion";
 
 const inputClass =
   "mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
@@ -57,13 +58,24 @@ export default function CategoriaLlamadoCampos({
         </div>
         <div>
           <label className={labelClass}>Categoría de inversión</label>
-          <input
+          <select
             name="categoria_inversion"
-            defaultValue={categoriaInversionInicial ?? ""}
             className={inputClass}
-          />
+            defaultValue={categoriaInversionInicial ?? ""}
+          >
+            <option value="">— Sin definir —</option>
+            {CATEGORIAS_INVERSION.map((c) => {
+              const valor = valorCategoriaInversion(c);
+              return (
+                <option key={valor} value={valor}>
+                  {valor}
+                </option>
+              );
+            })}
+          </select>
           <p className="mt-1 text-xs text-slate-400">
-            La del cuadro de costos del Plan de Adquisiciones — no confundir con la categoría del llamado.
+            Rubro del Cuadro de Costos del proyecto (solo los financiados por BIRF MOPC) — no confundir con la
+            categoría del llamado.
           </p>
         </div>
       </div>
