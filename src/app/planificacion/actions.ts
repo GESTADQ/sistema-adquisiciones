@@ -163,7 +163,6 @@ export async function crearLineaPresupuestaria(llamadoId: string, formData: Form
     monto: num(formData, "monto") ?? 0,
     ejercicio_fiscal: num(formData, "ejercicio_fiscal"),
     estructura_presupuestaria: str(formData, "estructura_presupuestaria"),
-    objeto_gasto_id: str(formData, "objeto_gasto_id"),
   };
 
   const { error } = await supabase.from("llamado_linea_presupuestaria").insert(payload);
