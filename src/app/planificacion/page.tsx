@@ -49,12 +49,20 @@ export default async function PlanificacionPage() {
               {llamados?.length ?? 0} llamados activos · Proyecto TAPE (BIRF 9517-PY)
             </p>
           </div>
-          <Link
-            href="/planificacion/nuevo"
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            + Nuevo llamado
-          </Link>
+          <div className="flex items-center gap-3">
+            <a
+              href="/api/reportes/prepac"
+              className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Descargar PREPAC (XLSX)
+            </a>
+            <Link
+              href="/planificacion/nuevo"
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              + Nuevo llamado
+            </Link>
+          </div>
         </div>
       </header>
 
