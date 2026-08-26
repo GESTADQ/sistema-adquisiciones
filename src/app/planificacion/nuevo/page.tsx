@@ -19,11 +19,13 @@ export default async function NuevoLlamadoPage() {
     redirect("/login");
   }
 
-  const [{ data: uocs }, { data: modalidades }, { data: componentes }] = await Promise.all([
-    supabase.from("entidad_uoc").select("id, entidad, uoc, sub_uoc").order("uoc"),
-    supabase.from("modalidad").select("id, nombre").order("nombre"),
-    supabase.from("componente_proyecto").select("id, nombre").order("nombre"),
-  ]);
+  const [{ data: uocs }, { data: modalidades }, { data: componentes }, { data: objetosGasto }] =
+    await Promise.all([
+      supabase.from("entidad_uoc").select("id, entidad, uoc, sub_uoc").order("uoc"),
+      supabase.from("modalidad").select("id, nombre").order("nombre"),
+      supabase.from("componente_proyecto").select("id, nombre").order("nombre"),
+      supabase.from("objeto_gasto").select("id, codigo, descripcion").order("codigo"),
+    ]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -110,7 +112,7 @@ export default async function NuevoLlamadoPage() {
             </div>
           </div>
 
-          <CategoriaLlamadoCampos />
+          <CategoriaLlamadoCampos objetosGasto={objetosGasto ?? []} />
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
