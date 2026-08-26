@@ -7,7 +7,11 @@ import {
   crearEtapaCronograma,
   actualizarEtapaCronograma,
   eliminarEtapaCronograma,
+  crearHito,
+  actualizarHito,
+  eliminarHito,
 } from "../actions";
+import { HITOS_POR_CATEGORIA, esCategoriaLlamadoValida } from "@/lib/hitosStep";
 
 const inputClass =
   "mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
@@ -89,6 +93,8 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
        monto_total, monto_estimado_usd, tipo_revision, estado_step, estado_actividad_step,
        apertura_mercado, ambito_mercado, estado_general, fecha_estimada_llamado,
        situacion_actual, etapa_interna_actual, ultimo_seguimiento, proxima_accion, observaciones,
+       categoria_llamado, categoria_inversion, tipo_cambio, precalificacion, proceso_contratacion,
+       opciones_evaluacion, riesgo_esas, tipo_documento_contratacion,
        modalidad:modalidad_id(nombre, organismo_financiador),
        componente:componente_id(nombre, subcomponente),
        uoc:uoc_id(entidad, uoc, sub_uoc)`
@@ -100,27 +106,34 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
     notFound();
   }
 
-  const [{ data: lineas }, { data: cronograma }, { data: objetosGasto }, { data: usuarios }] = await Promise.all([
-    supabase
-      .from("llamado_linea_presupuestaria")
-      .select(
-        "id, programa, proyecto_actividad, sgog, fuente_financiamiento, organismo_financiador, departamento, monto, ejercicio_fiscal, estructura_presupuestaria, objeto_gasto:objeto_gasto_id(codigo, descripcion)"
-      )
-      .eq("llamado_id", id)
-      .order("ejercicio_fiscal"),
-    supabase
-      .from("cronograma_etapa")
-      .select(
-        "id, etapa_nombre, orden, fase, fecha_original, fecha_revisada, fecha_real, responsable:responsable(id, nombre), nro_memo, nro_nota, detalle"
-      )
-      .eq("llamado_id", id)
-      .order("orden"),
-    supabase.from("objeto_gasto").select("id, codigo, descripcion").order("codigo"),
-    supabase.from("usuario").select("id, nombre").order("nombre"),
-  ]);
+  const [{ data: lineas }, { data: cronograma }, { data: objetosGasto }, { data: usuarios }, { data: hitos }] =
+    await Promise.all([
+      supabase
+        .from("llamado_linea_presupuestaria")
+        .select(
+          "id, clase, programa, subprograma, proyecto_actividad, sgog, fuente_financiamiento, organismo_financiador, departamento, cuenta, monto, ejercicio_fiscal, estructura_presupuestaria, objeto_gasto:objeto_gasto_id(codigo, descripcion)"
+        )
+        .eq("llamado_id", id)
+        .order("ejercicio_fiscal"),
+      supabase
+        .from("cronograma_etapa")
+        .select(
+          "id, etapa_nombre, orden, fase, fecha_original, fecha_revisada, fecha_real, responsable:responsable(id, nombre), nro_memo, nro_nota, detalle"
+        )
+        .eq("llamado_id", id)
+        .order("orden"),
+      supabase.from("objeto_gasto").select("id, codigo, descripcion").order("codigo"),
+      supabase.from("usuario").select("id, nombre").order("nombre"),
+      supabase.from("llamado_hito").select("id, tipo_hito, fecha_planificada, fecha_real").eq("llamado_id", id),
+    ]);
 
   const crearLineaConId = crearLineaPresupuestaria.bind(null, id);
   const crearEtapaConId = crearEtapaCronograma.bind(null, id);
+
+  const catalogoHitos = esCategoriaLlamadoValida(llamado.categoria_llamado)
+    ? HITOS_POR_CATEGORIA[llamado.categoria_llamado]
+    : null;
+  const hitosPorTipo = new Map((hitos ?? []).map((h) => [h.tipo_hito, h]));
 
   const modalidad = llamado.modalidad as unknown as { nombre: string; organismo_financiador: string } | null;
   const componente = llamado.componente as unknown as { nombre: string; subcomponente: string | null } | null;
@@ -181,7 +194,29 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
             <Campo label="Apertura de mercado" valor={llamado.apertura_mercado} />
             <Campo label="Plurianual" valor={llamado.plurianualidad ? "Sí" : "No"} />
             <Campo label="Ad referéndum" valor={llamado.ad_referendum ? "Sí" : "No"} />
+            <Campo label="Categoría del llamado" valor={llamado.categoria_llamado} />
+            <Campo label="Categoría de inversión" valor={llamado.categoria_inversion} />
+            <Campo label="Tipo de cambio" valor={llamado.tipo_cambio ? String(llamado.tipo_cambio) : undefined} />
           </dl>
+          {llamado.categoria_llamado === "Bienes y Obras" && (
+            <div className="mt-4 border-t border-slate-100 pt-4">
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Campos específicos — Bienes y Obras
+              </h3>
+              <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <Campo
+                  label="Precalificación"
+                  valor={
+                    llamado.precalificacion === true ? "Sí" : llamado.precalificacion === false ? "No" : undefined
+                  }
+                />
+                <Campo label="Proceso de contratación" valor={llamado.proceso_contratacion} />
+                <Campo label="Opciones de evaluación" valor={llamado.opciones_evaluacion} />
+                <Campo label="Riesgo ESAS" valor={llamado.riesgo_esas} />
+                <Campo label="Tipo de documento de contratación" valor={llamado.tipo_documento_contratacion} />
+              </dl>
+            </div>
+          )}
         </section>
 
         {/* Seguimiento interno */}
@@ -227,12 +262,15 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
                 <thead className="bg-slate-50">
                   <tr>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Ejercicio</th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-500">Clase</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Programa</th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-500">Subprograma</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Proyecto/Actividad</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">SGOG</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Objeto del gasto</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Fuente financ.</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Departamento</th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-500">Cuenta</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Estructura presupuestaria</th>
                     <th className="px-3 py-2 text-right font-medium text-slate-500">Monto</th>
                     <th className="px-3 py-2"></th>
@@ -245,7 +283,9 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
                     return (
                       <tr key={l.id} className="hover:bg-slate-50">
                         <td className="px-3 py-2 text-slate-700">{l.ejercicio_fiscal ?? "—"}</td>
+                        <td className="px-3 py-2 text-slate-700">{l.clase ?? "—"}</td>
                         <td className="px-3 py-2 text-slate-700">{l.programa ?? "—"}</td>
+                        <td className="px-3 py-2 text-slate-700">{l.subprograma ?? "—"}</td>
                         <td className="px-3 py-2 text-slate-700">{l.proyecto_actividad ?? "—"}</td>
                         <td className="px-3 py-2 text-slate-600">{l.sgog ?? "—"}</td>
                         <td className="px-3 py-2 text-slate-600">
@@ -253,6 +293,7 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
                         </td>
                         <td className="px-3 py-2 text-slate-600">{l.fuente_financiamiento ?? "—"}</td>
                         <td className="px-3 py-2 text-slate-600">{l.departamento ?? "—"}</td>
+                        <td className="px-3 py-2 text-slate-600">{l.cuenta ?? "—"}</td>
                         <td className="px-3 py-2 text-slate-500">{l.estructura_presupuestaria ?? "—"}</td>
                         <td className="px-3 py-2 text-right font-medium text-slate-800">
                           {formatMonto(l.monto, llamado.moneda)}
@@ -282,8 +323,16 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
                 <input name="ejercicio_fiscal" type="number" className={inputClass} />
               </div>
               <div>
+                <label className={labelClass}>Clase</label>
+                <input name="clase" className={inputClass} />
+              </div>
+              <div>
                 <label className={labelClass}>Programa</label>
                 <input name="programa" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Subprograma</label>
+                <input name="subprograma" className={inputClass} />
               </div>
               <div>
                 <label className={labelClass}>Proyecto/Actividad</label>
@@ -315,6 +364,10 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
               <div>
                 <label className={labelClass}>Departamento</label>
                 <input name="departamento" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Cuenta</label>
+                <input name="cuenta" className={inputClass} />
               </div>
               <div>
                 <label className={labelClass}>Estructura presupuestaria (SIAF)</label>
@@ -527,6 +580,105 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
               </div>
             </form>
           </details>
+        </section>
+
+        {/* Hitos STEP */}
+        <section className="rounded-lg border border-slate-200 bg-white p-5">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Cronograma STEP
+          </h2>
+          {!catalogoHitos ? (
+            <p className="text-sm text-slate-500">
+              Definí la Categoría del llamado (Bienes y Obras, Consultor Individual o Firmas Consultoras) en
+              &quot;Datos generales&quot; para habilitar los hitos STEP correspondientes.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200 text-sm">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-2 py-2 text-left font-medium text-slate-500">Hito</th>
+                    <th className="px-2 py-2 text-left font-medium text-slate-500">Planificada</th>
+                    <th className="px-2 py-2 text-left font-medium text-slate-500">Real</th>
+                    <th className="px-2 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {catalogoHitos.map((hito) => {
+                    const existente = hitosPorTipo.get(hito.label);
+
+                    if (existente) {
+                      const formId = `hito-${existente.id}`;
+                      const actualizarConIds = actualizarHito.bind(null, existente.id, id);
+                      const eliminarConIds = eliminarHito.bind(null, existente.id, id);
+                      return (
+                        <tr key={hito.label} className="hover:bg-slate-50">
+                          <td className="px-2 py-2 text-slate-800">{hito.label}</td>
+                          <td className="px-2 py-2">
+                            <form id={formId} action={actualizarConIds} />
+                            {hito.soloReal ? (
+                              <span className="text-slate-400">—</span>
+                            ) : (
+                              <input
+                                form={formId}
+                                name="fecha_planificada"
+                                type="date"
+                                defaultValue={toDateInputValue(existente.fecha_planificada)}
+                                className={`${inputClass} w-36`}
+                              />
+                            )}
+                          </td>
+                          <td className="px-2 py-2">
+                            <input
+                              form={formId}
+                              name="fecha_real"
+                              type="date"
+                              defaultValue={toDateInputValue(existente.fecha_real)}
+                              className={`${inputClass} w-36`}
+                            />
+                          </td>
+                          <td className="px-2 py-2 whitespace-nowrap">
+                            <button form={formId} type="submit" className="mr-2 text-xs text-blue-600 hover:underline">
+                              Guardar
+                            </button>
+                            <form action={eliminarConIds} className="inline">
+                              <button type="submit" className="text-xs text-red-600 hover:underline">
+                                Eliminar
+                              </button>
+                            </form>
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    const crearConIds = crearHito.bind(null, id, hito.label);
+                    const formId = `hito-nuevo-${hito.label}`;
+                    return (
+                      <tr key={hito.label} className="hover:bg-slate-50">
+                        <td className="px-2 py-2 text-slate-500">{hito.label}</td>
+                        <td className="px-2 py-2">
+                          <form id={formId} action={crearConIds} />
+                          {hito.soloReal ? (
+                            <span className="text-slate-400">—</span>
+                          ) : (
+                            <input form={formId} name="fecha_planificada" type="date" className={`${inputClass} w-36`} />
+                          )}
+                        </td>
+                        <td className="px-2 py-2">
+                          <input form={formId} name="fecha_real" type="date" className={`${inputClass} w-36`} />
+                        </td>
+                        <td className="px-2 py-2 whitespace-nowrap">
+                          <button form={formId} type="submit" className="text-xs text-blue-600 hover:underline">
+                            Agregar
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       </main>
     </div>
