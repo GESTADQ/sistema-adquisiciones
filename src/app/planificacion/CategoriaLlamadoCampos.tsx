@@ -8,6 +8,8 @@ const inputClass =
   "mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
 const labelClass = "block text-xs font-medium text-slate-500";
 
+type ObjetoGasto = { id: string; codigo: string; descripcion: string };
+
 type Props = {
   categoriaInicial?: string | null;
   categoriaInversionInicial?: string | null;
@@ -18,6 +20,8 @@ type Props = {
   opcionesEvaluacionInicial?: string | null;
   riesgoEsasInicial?: string | null;
   tipoDocumentoContratacionInicial?: string | null;
+  objetosGasto?: ObjetoGasto[];
+  objetoGastoInicial?: string | null;
 };
 
 export default function CategoriaLlamadoCampos({
@@ -30,6 +34,8 @@ export default function CategoriaLlamadoCampos({
   opcionesEvaluacionInicial,
   riesgoEsasInicial,
   tipoDocumentoContratacionInicial,
+  objetosGasto,
+  objetoGastoInicial,
 }: Props) {
   const [categoria, setCategoria] = useState(categoriaInicial ?? "");
   const esBienesObras = categoria === "Bienes y Obras";
@@ -78,6 +84,22 @@ export default function CategoriaLlamadoCampos({
             categoría del llamado.
           </p>
         </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>Objeto del gasto (catálogo)</label>
+        <select name="objeto_gasto_id" className={inputClass} defaultValue={objetoGastoInicial ?? ""}>
+          <option value="">— Sin definir —</option>
+          {objetosGasto?.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.codigo} · {o.descripcion}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-xs text-slate-400">
+          Clasificación del catálogo de bienes/servicios del llamado — se usa para el reporte PAC (Anexo
+          B-02-02), no para la estructura presupuestaria (eso va por SGOG en cada línea presupuestaria).
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
