@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { actualizarLlamado } from "../../actions";
+import CategoriaLlamadoCampos from "../../CategoriaLlamadoCampos";
 
 const inputClass =
   "mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
@@ -118,9 +119,9 @@ export default async function EditarLlamadoPage({ params }: PageProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Monto total *</label>
+              <label className={labelClass}>Monto total (Gs.) *</label>
               <input
                 name="monto_total"
                 type="number"
@@ -137,17 +138,19 @@ export default async function EditarLlamadoPage({ params }: PageProps) {
                 <option value="USD">USD</option>
               </select>
             </div>
-            <div>
-              <label className={labelClass}>Monto estimado (USD)</label>
-              <input
-                name="monto_estimado_usd"
-                type="number"
-                step="0.01"
-                defaultValue={llamado.monto_estimado_usd ?? ""}
-                className={inputClass}
-              />
-            </div>
           </div>
+
+          <CategoriaLlamadoCampos
+            categoriaInicial={llamado.categoria_llamado}
+            categoriaInversionInicial={llamado.categoria_inversion}
+            tipoCambioInicial={llamado.tipo_cambio}
+            montoEstimadoUsdActual={llamado.monto_estimado_usd}
+            precalificacionInicial={llamado.precalificacion}
+            procesoContratacionInicial={llamado.proceso_contratacion}
+            opcionesEvaluacionInicial={llamado.opciones_evaluacion}
+            riesgoEsasInicial={llamado.riesgo_esas}
+            tipoDocumentoContratacionInicial={llamado.tipo_documento_contratacion}
+          />
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
