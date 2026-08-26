@@ -106,12 +106,12 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
     notFound();
   }
 
-  const [{ data: lineas }, { data: cronograma }, { data: objetosGasto }, { data: usuarios }, { data: hitos }] =
+  const [{ data: lineas }, { data: cronograma }, { data: usuarios }, { data: hitos }] =
     await Promise.all([
       supabase
         .from("llamado_linea_presupuestaria")
         .select(
-          "id, clase, programa, subprograma, proyecto_actividad, sgog, fuente_financiamiento, organismo_financiador, departamento, cuenta, monto, ejercicio_fiscal, estructura_presupuestaria, objeto_gasto:objeto_gasto_id(codigo, descripcion)"
+          "id, clase, programa, subprograma, proyecto_actividad, sgog, fuente_financiamiento, organismo_financiador, departamento, cuenta, monto, ejercicio_fiscal, estructura_presupuestaria"
         )
         .eq("llamado_id", id)
         .order("ejercicio_fiscal"),
@@ -122,7 +122,6 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
         )
         .eq("llamado_id", id)
         .order("orden"),
-      supabase.from("objeto_gasto").select("id, codigo, descripcion").order("codigo"),
       supabase.from("usuario").select("id, nombre").order("nombre"),
       supabase.from("llamado_hito").select("id, tipo_hito, fecha_planificada, fecha_real").eq("llamado_id", id),
     ]);
@@ -267,7 +266,6 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Subprograma</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Proyecto/Actividad</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">SGOG</th>
-                    <th className="px-3 py-2 text-left font-medium text-slate-500">Objeto del gasto</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Fuente financ.</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Departamento</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Cuenta</th>
@@ -278,7 +276,6 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {lineas.map((l) => {
-                    const objetoGasto = l.objeto_gasto as unknown as { codigo: string; descripcion: string } | null;
                     const eliminarConIds = eliminarLineaPresupuestaria.bind(null, l.id, id);
                     return (
                       <tr key={l.id} className="hover:bg-slate-50">
@@ -288,9 +285,6 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
                         <td className="px-3 py-2 text-slate-700">{l.subprograma ?? "—"}</td>
                         <td className="px-3 py-2 text-slate-700">{l.proyecto_actividad ?? "—"}</td>
                         <td className="px-3 py-2 text-slate-600">{l.sgog ?? "—"}</td>
-                        <td className="px-3 py-2 text-slate-600">
-                          {objetoGasto ? `${objetoGasto.codigo} · ${objetoGasto.descripcion}` : "—"}
-                        </td>
                         <td className="px-3 py-2 text-slate-600">{l.fuente_financiamiento ?? "—"}</td>
                         <td className="px-3 py-2 text-slate-600">{l.departamento ?? "—"}</td>
                         <td className="px-3 py-2 text-slate-600">{l.cuenta ?? "—"}</td>
@@ -341,17 +335,6 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
               <div>
                 <label className={labelClass}>SGOG</label>
                 <input name="sgog" className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Objeto del gasto</label>
-                <select name="objeto_gasto_id" className={inputClass} defaultValue="">
-                  <option value="">— Sin definir —</option>
-                  {objetosGasto?.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.codigo} · {o.descripcion}
-                    </option>
-                  ))}
-                </select>
               </div>
               <div>
                 <label className={labelClass}>Fuente de financiamiento</label>
