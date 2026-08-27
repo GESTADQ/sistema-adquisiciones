@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { actualizarLlamado } from "../../actions";
 import CategoriaLlamadoCampos from "../../CategoriaLlamadoCampos";
+import AppNav from "@/components/AppNav";
 
 const inputClass =
   "mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
@@ -39,6 +40,7 @@ export default async function EditarLlamadoPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <AppNav activo="/planificacion" />
       <header className="border-b border-slate-200 bg-white px-6 py-4">
         <Link href={`/planificacion/${id}`} className="text-sm text-blue-600 hover:underline">
           ← Volver al detalle del llamado
