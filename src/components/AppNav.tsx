@@ -6,6 +6,7 @@ import Link from "next/link";
 const MODULOS = [
   { href: "/planificacion", label: "Planificación" },
   { href: "/proveedores", label: "Proveedores" },
+  { href: "/adjudicacion", label: "Adjudicación" },
 ];
 
 export default function AppNav({ activo }: { activo: string }) {
