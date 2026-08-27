@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import AppNav from "@/components/AppNav";
 
 function formatMonto(monto: number, moneda: string) {
   return new Intl.NumberFormat("es-PY", {
@@ -41,6 +42,7 @@ export default async function PlanificacionPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <AppNav activo="/planificacion" />
       <header className="border-b border-slate-200 bg-white px-6 py-4">
         <div className="flex items-start justify-between gap-4">
           <div>
