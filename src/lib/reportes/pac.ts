@@ -23,9 +23,14 @@ import { PAC_ENCABEZADO_FIJO } from "./pacConstants";
 //                     D27,F27,I27,L27,N27,P27)
 //   M31:Q31        → Descripción del PAC (se reutiliza el mismo objeto/nombre del
 //                     llamado — dato único, no se inventa un texto distinto)
-//   C34,E34,M34    → Tabla 4: código catálogo / descripción / monto del único
-//                     objeto_gasto del llamado (el esquema no admite más de uno por
-//                     llamado, así que solo se completa la primera de las 7 filas)
+//   C34,E34,M34    → Tabla 4: código catálogo / descripción del bien, servicio,
+//                     consultoría y/u obra pública / monto — código y descripción son
+//                     CAMPOS MANUALES (`llamado.pac_codigo_catalogo` /
+//                     `llamado.pac_descripcion_bien`) que se cargan a mano al crear/editar
+//                     el llamado y quedan en blanco si no se completan (28/8/2026: se
+//                     descartó usar el catálogo `objeto_gasto` para esto, a pedido de
+//                     Martin — ese campo sigue existiendo en `llamado` pero ya no
+//                     alimenta este reporte)
 //   Q41            → Total tabla 4
 //   C44..Q44 (hasta C50..Q50) → desglose presupuestario por línea (Clase/Programa/
 //                     Proyecto-Actividad/SGOG/F.F./O.F./Dpto./Monto) — una fila por
@@ -69,8 +74,9 @@ type LlamadoPac = {
   plurianualidad: boolean | null;
   ad_referendum: boolean | null;
   monto_total: number;
+  pac_codigo_catalogo: string | null;
+  pac_descripcion_bien: string | null;
   modalidad: { nombre: string } | null;
-  objeto_gasto: { codigo: string; descripcion: string } | null;
 };
 
 function monedaLabel(moneda: string | null): string {
@@ -93,9 +99,8 @@ export async function generarPacWorkbook(llamadoId: string): Promise<{
     .from("llamado")
     .select(
       `id, nro_pac, objeto_llamado, nombre_llamado, fecha_estimada_llamado, moneda,
-       plurianualidad, ad_referendum, monto_total,
-       modalidad:modalidad_id(nombre),
-       objeto_gasto:objeto_gasto_id(codigo, descripcion)`
+       plurianualidad, ad_referendum, monto_total, pac_codigo_catalogo, pac_descripcion_bien,
+       modalidad:modalidad_id(nombre)`
     )
     .eq("id", llamadoId)
     .single();
@@ -129,14 +134,13 @@ export async function generarPacWorkbook(llamadoId: string): Promise<{
 
   const descripcion = llamado.nombre_llamado || llamado.objeto_llamado || "";
 
-  // Ejercicio fiscal base: el menor año presente en las líneas, o el año de la fecha
-  // estimada del llamado si todavía no tiene líneas cargadas.
-  const anios = lineas
-    .map((l) => l.ejercicio_fiscal)
-    .filter((a): a is number => a != null)
-    .sort((a, b) => a - b);
-  const anioBase =
-    anios[0] ?? (llamado.fecha_estimada_llamado ? new Date(llamado.fecha_estimada_llamado).getFullYear() : new Date().getFullYear());
+  // Ejercicio fiscal base: el PAC que se genera durante el año calendario en curso
+  // siempre planifica el ejercicio fiscal SIGUIENTE (así lo pide la DNCP) — no depende
+  // de qué años tengan cargadas líneas presupuestarias. Se recalcula en cada
+  // generación, así el reporte se ajusta solo año a año (28/8/2026, ítem 6 del
+  // feedback de Martin: antes tomaba el menor `ejercicio_fiscal` de las líneas, lo
+  // cual quedaba desactualizado o vacío según los datos cargados).
+  const anioBase = new Date().getFullYear() + 1;
 
   // --- Encabezado fijo de entidad ---
   sheet.getCell(13, 14).value = `EJERCICIO FISCAL ${anioBase}`;
@@ -182,15 +186,15 @@ export async function generarPacWorkbook(llamadoId: string): Promise<{
   // hay campo de origen en `llamado` para ese catálogo de 16 rubros.
   sheet.getCell("M31").value = descripcion;
 
-  // --- Tabla 4: catálogo (un solo renglón — el schema solo admite un objeto_gasto
-  // por llamado) ---
-  if (llamado.objeto_gasto) {
-    sheet.getCell(34, 3).value = llamado.objeto_gasto.codigo;
-    sheet.getCell(34, 5).value = llamado.objeto_gasto.descripcion;
-    const celdaMontoCatalogo = sheet.getCell(34, 13);
-    celdaMontoCatalogo.value = llamado.monto_total ?? 0;
-    celdaMontoCatalogo.numFmt = "#,##0";
-  }
+  // --- Tabla 4: código catálogo y descripción del bien/servicio/consultoría y/u obra
+  // pública — campos manuales, en blanco si no se cargaron al alta/edición del
+  // llamado (28/8/2026, ítems 1 y 2 del feedback de Martin: no se inventan a partir
+  // del catálogo `objeto_gasto`) ---
+  sheet.getCell(34, 3).value = llamado.pac_codigo_catalogo ?? "";
+  sheet.getCell(34, 5).value = llamado.pac_descripcion_bien ?? "";
+  const celdaMontoCatalogo = sheet.getCell(34, 13);
+  celdaMontoCatalogo.value = llamado.monto_total ?? 0;
+  celdaMontoCatalogo.numFmt = "#,##0";
   const celdaTotalTabla4 = sheet.getCell(41, 17);
   celdaTotalTabla4.value = llamado.monto_total ?? 0;
   celdaTotalTabla4.numFmt = "#,##0";
