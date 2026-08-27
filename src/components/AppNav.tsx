@@ -7,6 +7,7 @@ const MODULOS = [
   { href: "/planificacion", label: "Planificación" },
   { href: "/proveedores", label: "Proveedores" },
   { href: "/adjudicacion", label: "Adjudicación" },
+  { href: "/contratos", label: "Gestión Contractual" },
 ];
 
 export default function AppNav({ activo }: { activo: string }) {
