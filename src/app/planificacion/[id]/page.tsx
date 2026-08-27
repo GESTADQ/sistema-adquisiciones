@@ -159,6 +159,12 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
           </div>
           <div className="flex items-center gap-3">
             <EstadoBadge estado={llamado.estado_step} />
+            <a
+              href={`/api/reportes/pac/${id}`}
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Descargar PAC (XLSX)
+            </a>
             <Link
               href={`/planificacion/${id}/editar`}
               className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
