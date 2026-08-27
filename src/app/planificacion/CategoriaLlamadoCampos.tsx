@@ -22,6 +22,8 @@ type Props = {
   tipoDocumentoContratacionInicial?: string | null;
   objetosGasto?: ObjetoGasto[];
   objetoGastoInicial?: string | null;
+  pacCodigoCatalogoInicial?: string | null;
+  pacDescripcionBienInicial?: string | null;
 };
 
 export default function CategoriaLlamadoCampos({
@@ -36,6 +38,8 @@ export default function CategoriaLlamadoCampos({
   tipoDocumentoContratacionInicial,
   objetosGasto,
   objetoGastoInicial,
+  pacCodigoCatalogoInicial,
+  pacDescripcionBienInicial,
 }: Props) {
   const [categoria, setCategoria] = useState(categoriaInicial ?? "");
   const esBienesObras = categoria === "Bienes y Obras";
@@ -97,8 +101,37 @@ export default function CategoriaLlamadoCampos({
           ))}
         </select>
         <p className="mt-1 text-xs text-slate-400">
-          Clasificación del catálogo de bienes/servicios del llamado — se usa para el reporte PAC (Anexo
-          B-02-02), no para la estructura presupuestaria (eso va por SGOG en cada línea presupuestaria).
+          Clasificación general del catálogo de bienes/servicios del llamado — no alimenta el reporte PAC
+          (Anexo B-02-02), que usa los dos campos manuales de abajo.
+        </p>
+      </div>
+
+      <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Datos para el PAC (Anexo B-02-02) — Tabla 4
+        </h3>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className={labelClass}>Código catálogo</label>
+            <input
+              name="pac_codigo_catalogo"
+              defaultValue={pacCodigoCatalogoInicial ?? ""}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>
+              Descripción del bien, servicio, consultoría y/u obra pública
+            </label>
+            <input
+              name="pac_descripcion_bien"
+              defaultValue={pacDescripcionBienInicial ?? ""}
+              className={inputClass}
+            />
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-slate-400">
+          Campos de carga manual — si se dejan vacíos, quedan en blanco en el reporte PAC descargable.
         </p>
       </div>
 
