@@ -146,6 +146,8 @@ export default async function EditarLlamadoPage({ params }: PageProps) {
             categoriaInversionInicial={llamado.categoria_inversion}
             objetosGasto={objetosGasto ?? []}
             objetoGastoInicial={llamado.objeto_gasto_id}
+            pacCodigoCatalogoInicial={llamado.pac_codigo_catalogo}
+            pacDescripcionBienInicial={llamado.pac_descripcion_bien}
             tipoCambioInicial={llamado.tipo_cambio}
             montoEstimadoUsdActual={llamado.monto_estimado_usd}
             precalificacionInicial={llamado.precalificacion}
