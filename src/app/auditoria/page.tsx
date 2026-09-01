@@ -89,7 +89,7 @@ export default async function AuditoriaPage() {
                           <td className="px-4 py-2 font-medium text-slate-900">
                             {r.tabla_afectada}
                           </td>
-                          <td className="px-4 py-2 text-slate-600">{r.accion}</td>
+                          <td className="px-4 py-2 text-slate-600 capitalize">{r.accion}</td>
                           <td className="px-4 py-2 text-slate-600">{usuario?.nombre ?? "—"}</td>
                           <td className="px-4 py-2 text-slate-400 font-mono text-xs">
                             {r.registro_id}
