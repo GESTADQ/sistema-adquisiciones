@@ -71,13 +71,18 @@ export async function eliminarMovimiento(movimientoId: string, llamadoId: string
   if (error) throw new Error(error.message);
 
   if (fila) {
-    await supabase.from("auditoria").insert({
+    const { error: errorAuditoria } = await supabase.from("auditoria").insert({
       tabla_afectada: "movimiento_financiero",
       registro_id: movimientoId,
-      accion: "Eliminar",
+      accion: "eliminar",
       usuario_id: user?.id ?? null,
       snapshot: fila,
     });
+    if (errorAuditoria) {
+      // No frenamos la baja por esto (ya se ejecutó), pero no queremos que
+      // quede en silencio si el registro de auditoría falla.
+      console.error("No se pudo registrar auditoría de eliminarMovimiento:", errorAuditoria.message);
+    }
   }
 
   revalidatePath(`/financiero/${llamadoId}`);
