@@ -11,6 +11,7 @@ const MODULOS = [
   { href: "/financiero", label: "Financiero" },
   { href: "/documentos", label: "Documentos" },
   { href: "/administracion", label: "Administración" },
+  { href: "/auditoria", label: "Auditoría" },
 ];
 
 export default function AppNav({ activo }: { activo: string }) {
