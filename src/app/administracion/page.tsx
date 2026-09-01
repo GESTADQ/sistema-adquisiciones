@@ -31,9 +31,19 @@ export default async function AdministracionPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <AppNav activo="/administracion" />
-      <header className="border-b border-slate-200 bg-white px-6 py-4">
-        <h1 className="text-lg font-semibold text-slate-900">Administración y Seguridad</h1>
-        <p className="text-sm text-slate-500">Usuarios del sistema y sus roles</p>
+      <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
+        <div>
+          <h1 className="text-lg font-semibold text-slate-900">Administración y Seguridad</h1>
+          <p className="text-sm text-slate-500">Usuarios del sistema y sus roles</p>
+        </div>
+        {esAdministrador && (
+          <Link
+            href="/administracion/nuevo"
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            + Nuevo usuario
+          </Link>
+        )}
       </header>
 
       <main className="p-6">
@@ -103,9 +113,8 @@ export default async function AdministracionPage() {
 
         {esAdministrador && (
           <p className="mt-4 text-sm text-slate-500">
-            Para dar de alta un usuario nuevo, hay que crearlo primero en Supabase Auth
-            (Authentication → Users → Add user) y después cargar acá su nombre y rol — todavía
-            no hay un alta de usuarios directamente desde esta pantalla.
+            "+ Nuevo usuario" manda una invitación por email — la persona invitada elige su
+            propia contraseña siguiendo el link del mail; recién ahí queda activo el usuario.
           </p>
         )}
       </main>
