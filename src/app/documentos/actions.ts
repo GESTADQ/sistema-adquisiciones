@@ -58,13 +58,38 @@ export async function subirDocumento(llamadoId: string, formData: FormData) {
   redirect(`/documentos/${llamadoId}`);
 }
 
+// `documento` es un registro principal (un archivo/expediente concreto, no un
+// detalle interno de otro formulario) — su baja es irreversible (se borra el
+// objeto del bucket) y por eso queda un snapshot en `auditoria` antes de
+// borrarlo, a diferencia de las bajas de ítems/hitos/líneas secundarias que
+// quedan fuera del alcance de Auditoría (ver ficha técnica).
 export async function eliminarDocumento(documentoId: string, rutaArchivo: string, llamadoId: string) {
   const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: fila } = await supabase
+    .from("documento")
+    .select("*")
+    .eq("id", documentoId)
+    .maybeSingle();
 
   await supabase.storage.from(BUCKET).remove([rutaArchivo]);
 
   const { error } = await supabase.from("documento").delete().eq("id", documentoId);
   if (error) throw new Error(error.message);
+
+  if (fila) {
+    await supabase.from("auditoria").insert({
+      tabla_afectada: "documento",
+      registro_id: documentoId,
+      accion: "Eliminar",
+      usuario_id: user?.id ?? null,
+      snapshot: fila,
+    });
+  }
 
   revalidatePath(`/documentos/${llamadoId}`);
   revalidatePath("/documentos");
