@@ -82,13 +82,16 @@ export async function eliminarDocumento(documentoId: string, rutaArchivo: string
   if (error) throw new Error(error.message);
 
   if (fila) {
-    await supabase.from("auditoria").insert({
+    const { error: errorAuditoria } = await supabase.from("auditoria").insert({
       tabla_afectada: "documento",
       registro_id: documentoId,
-      accion: "Eliminar",
+      accion: "eliminar",
       usuario_id: user?.id ?? null,
       snapshot: fila,
     });
+    if (errorAuditoria) {
+      console.error("No se pudo registrar auditoría de eliminarDocumento:", errorAuditoria.message);
+    }
   }
 
   revalidatePath(`/documentos/${llamadoId}`);
