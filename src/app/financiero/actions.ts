@@ -51,10 +51,35 @@ export async function crearMovimiento(llamadoId: string, formData: FormData) {
   redirect(`/financiero/${llamadoId}`);
 }
 
+// `movimiento_financiero` es un registro principal (un movimiento financiero
+// real, no un detalle interno de otro formulario) — su baja es irreversible y
+// queda un snapshot en `auditoria` antes de borrarlo.
 export async function eliminarMovimiento(movimientoId: string, llamadoId: string) {
   const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: fila } = await supabase
+    .from("movimiento_financiero")
+    .select("*")
+    .eq("id", movimientoId)
+    .maybeSingle();
+
   const { error } = await supabase.from("movimiento_financiero").delete().eq("id", movimientoId);
   if (error) throw new Error(error.message);
+
+  if (fila) {
+    await supabase.from("auditoria").insert({
+      tabla_afectada: "movimiento_financiero",
+      registro_id: movimientoId,
+      accion: "Eliminar",
+      usuario_id: user?.id ?? null,
+      snapshot: fila,
+    });
+  }
+
   revalidatePath(`/financiero/${llamadoId}`);
   revalidatePath("/financiero");
   redirect(`/financiero/${llamadoId}`);
