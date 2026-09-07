@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import AppNav from "@/components/AppNav";
+import { formatIdentificadorLlamado } from "@/lib/identificadorLlamado";
 
 export default async function DocumentosPage() {
   const supabase = await createClient();
@@ -15,7 +16,11 @@ export default async function DocumentosPage() {
   }
 
   const [{ data: llamados, error }, { data: documentos }] = await Promise.all([
-    supabase.from("llamado").select("id, nro_pac, nombre_llamado, objeto_llamado").order("nro_pac"),
+    supabase
+      .from("llamado")
+      .select("id, nro_pac, nro_proceso_interno, nombre_llamado, objeto_llamado")
+      .order("nro_proceso_interno", { nullsFirst: false })
+      .order("nro_pac"),
     supabase.from("documento").select("llamado_id"),
   ]);
 
@@ -25,7 +30,9 @@ export default async function DocumentosPage() {
   }
 
   const filas = (llamados ?? []).sort((a, b) =>
-    a.nro_pac.localeCompare(b.nro_pac, undefined, { numeric: true })
+    (a.nro_proceso_interno ?? a.nro_pac ?? "").localeCompare(b.nro_proceso_interno ?? b.nro_pac ?? "", undefined, {
+      numeric: true,
+    })
   );
 
   return (
@@ -60,7 +67,9 @@ export default async function DocumentosPage() {
                 const cantidad = cantidadPorLlamado.get(llamado.id) ?? 0;
                 return (
                   <tr key={llamado.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-2 font-medium text-slate-900">{llamado.nro_pac}</td>
+                    <td className="px-4 py-2 font-medium text-slate-900">
+                      {formatIdentificadorLlamado(llamado.nro_proceso_interno, llamado.nro_pac)}
+                    </td>
                     <td className="px-4 py-2 text-slate-700">
                       {llamado.nombre_llamado || llamado.objeto_llamado}
                     </td>
