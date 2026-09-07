@@ -11,6 +11,7 @@ import {
   crearCertificacionPago,
   eliminarCertificacionPago,
 } from "../actions";
+import { formatIdentificadorLlamado } from "@/lib/identificadorLlamado";
 
 const inputClass =
   "mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
@@ -47,7 +48,7 @@ export default async function ContratoDetallePage({ params }: PageProps) {
 
   const { data: llamado, error } = await supabase
     .from("llamado")
-    .select("id, nro_pac, nombre_llamado, objeto_llamado")
+    .select("id, nro_pac, nro_proceso_interno, nombre_llamado, objeto_llamado")
     .eq("id", llamadoId)
     .single();
 
@@ -107,7 +108,7 @@ export default async function ContratoDetallePage({ params }: PageProps) {
           ← Volver a Gestión Contractual
         </Link>
         <h1 className="mt-2 text-lg font-semibold text-slate-900">
-          Contrato — N° PAC {llamado.nro_pac}
+          Contrato — {formatIdentificadorLlamado(llamado.nro_proceso_interno, llamado.nro_pac)}
         </h1>
         <p className="mt-1 max-w-3xl text-sm text-slate-600">
           {llamado.nombre_llamado || llamado.objeto_llamado}
