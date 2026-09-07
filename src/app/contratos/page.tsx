@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import AppNav from "@/components/AppNav";
+import { formatIdentificadorLlamado } from "@/lib/identificadorLlamado";
 
 export default async function ContratosPage() {
   const supabase = await createClient();
@@ -17,20 +18,34 @@ export default async function ContratosPage() {
   const [{ data: adjudicaciones, error }, { data: contratos }] = await Promise.all([
     supabase
       .from("adjudicacion")
-      .select("id, llamado_id, llamado:llamado_id(id, nro_pac, nombre_llamado, objeto_llamado)")
+      .select("id, llamado_id, llamado:llamado_id(id, nro_pac, nro_proceso_interno, nombre_llamado, objeto_llamado)")
       .order("llamado_id"),
     supabase.from("contrato").select("llamado_id, estado, nro_contrato_step, nro_contrato_mopc, fecha_vencimiento"),
   ]);
 
   const contratoPorLlamado = new Map((contratos ?? []).map((c) => [c.llamado_id, c]));
 
+  type LlamadoResumen = {
+    id: string;
+    nro_pac: string | null;
+    nro_proceso_interno: string | null;
+    nombre_llamado: string | null;
+    objeto_llamado: string | null;
+  };
+
   const filas = (adjudicaciones ?? [])
     .map((a) => {
-      const llamado = a.llamado as unknown as { id: string; nro_pac: string; nombre_llamado: string | null; objeto_llamado: string | null } | null;
+      const llamado = a.llamado as unknown as LlamadoResumen | null;
       return llamado ? { adjudicacionId: a.id, llamado } : null;
     })
-    .filter((f): f is { adjudicacionId: string; llamado: { id: string; nro_pac: string; nombre_llamado: string | null; objeto_llamado: string | null } } => f !== null)
-    .sort((x, y) => x.llamado.nro_pac.localeCompare(y.llamado.nro_pac, undefined, { numeric: true }));
+    .filter((f): f is { adjudicacionId: string; llamado: LlamadoResumen } => f !== null)
+    .sort((x, y) =>
+      (x.llamado.nro_proceso_interno ?? x.llamado.nro_pac ?? "").localeCompare(
+        y.llamado.nro_proceso_interno ?? y.llamado.nro_pac ?? "",
+        undefined,
+        { numeric: true }
+      )
+    );
 
   const estadoBadge = (estado: string) => {
     const clases: Record<string, string> = {
@@ -76,7 +91,9 @@ export default async function ContratosPage() {
                 const c = contratoPorLlamado.get(llamado.id);
                 return (
                   <tr key={llamado.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-2 font-medium text-slate-900">{llamado.nro_pac}</td>
+                    <td className="px-4 py-2 font-medium text-slate-900">
+                      {formatIdentificadorLlamado(llamado.nro_proceso_interno, llamado.nro_pac)}
+                    </td>
                     <td className="px-4 py-2 text-slate-700">{llamado.nombre_llamado || llamado.objeto_llamado}</td>
                     <td className="px-4 py-2 text-slate-600">{c?.nro_contrato_step ?? "—"}</td>
                     <td className="px-4 py-2 text-slate-600">{c?.nro_contrato_mopc ?? "—"}</td>
