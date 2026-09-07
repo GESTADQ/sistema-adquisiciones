@@ -96,7 +96,7 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
        apertura_mercado, ambito_mercado, estado_general, fecha_estimada_llamado,
        situacion_actual, etapa_interna_actual, ultimo_seguimiento, proxima_accion, observaciones,
        categoria_llamado, categoria_inversion, tipo_cambio, precalificacion, proceso_contratacion,
-       opciones_evaluacion, riesgo_esas, tipo_documento_contratacion,
+       opciones_evaluacion, riesgo_esas, tipo_documento_contratacion, requisitos_calificacion,
        modalidad:modalidad_id(nombre, organismo_financiador),
        componente:componente_id(nombre, subcomponente),
        uoc:uoc_id(entidad, uoc, sub_uoc),
@@ -188,7 +188,7 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
           </h2>
           <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Campo label="Objeto del llamado" valor={llamado.objeto_llamado} />
-            <Campo label="Modalidad" valor={modalidad?.nombre} />
+            <Campo label="Modalidad/Método" valor={modalidad?.nombre} />
             <Campo label="Organismo financiador" valor={modalidad?.organismo_financiador} />
             <Campo label="Componente" valor={componente?.nombre} />
             <Campo label="Subcomponente" valor={componente?.subcomponente} />
@@ -204,6 +204,7 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
             <Campo label="Tipo de revisión" valor={llamado.tipo_revision} />
             <Campo label="Ámbito de mercado" valor={llamado.ambito_mercado} />
             <Campo label="Apertura de mercado" valor={llamado.apertura_mercado} />
+            <Campo label="Requisitos de Calificación" valor={llamado.requisitos_calificacion} />
             <Campo label="Plurianual" valor={llamado.plurianualidad ? "Sí" : "No"} />
             <Campo label="Ad referéndum" valor={llamado.ad_referendum ? "Sí" : "No"} />
             <Campo label="Categoría del llamado" valor={llamado.categoria_llamado} />
