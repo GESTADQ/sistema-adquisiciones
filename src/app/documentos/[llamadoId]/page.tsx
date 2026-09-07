@@ -4,6 +4,7 @@ import Link from "next/link";
 import AppNav from "@/components/AppNav";
 import { subirDocumento, eliminarDocumento } from "../actions";
 import { CATEGORIAS_DOCUMENTO } from "@/lib/categoriasDocumento";
+import { formatIdentificadorLlamado } from "@/lib/identificadorLlamado";
 
 const inputClass =
   "w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
@@ -34,7 +35,7 @@ export default async function DocumentosDetallePage({
 
   const { data: llamado } = await supabase
     .from("llamado")
-    .select("id, nro_pac, nombre_llamado, objeto_llamado")
+    .select("id, nro_pac, nro_proceso_interno, nombre_llamado, objeto_llamado")
     .eq("id", llamadoId)
     .maybeSingle();
 
@@ -65,7 +66,8 @@ export default async function DocumentosDetallePage({
           ← Volver a Documentos / Expediente
         </Link>
         <h1 className="mt-1 text-lg font-semibold text-slate-900">
-          {llamado.nro_pac} — {llamado.nombre_llamado || llamado.objeto_llamado}
+          {formatIdentificadorLlamado(llamado.nro_proceso_interno, llamado.nro_pac)} —{" "}
+          {llamado.nombre_llamado || llamado.objeto_llamado}
         </h1>
       </header>
 
