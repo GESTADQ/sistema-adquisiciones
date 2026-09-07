@@ -3,6 +3,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { grupoModalidadPorObjeto } from "@/lib/modalidad";
+import { AMBITO_MERCADO_OPCIONES, APERTURA_MERCADO_OPCIONES } from "@/lib/mercado";
+import { REQUISITOS_CALIFICACION_OPCIONES } from "@/lib/requisitosCalificacion";
 
 function str(formData: FormData, key: string): string | null {
   const v = formData.get(key);
@@ -34,6 +37,38 @@ function calcularMontoEstimadoUsd(montoTotal: number, tipoCambio: number | null)
   return Math.round((montoTotal / tipoCambio) * 100) / 100;
 }
 
+// Validación backend de Modalidad/Método dependiente del Objeto del llamado
+// (pedido de Martin, 7/9/2026) — no confiar solo en el <select> filtrado del
+// frontend. Si llega una combinación incompatible, se rechaza.
+async function validarModalidadObjeto(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  objetoLlamado: string | null,
+  modalidadId: string | null
+) {
+  if (!modalidadId) return; // Modalidad es opcional (campo "Sin definir")
+  const grupoEsperado = grupoModalidadPorObjeto(objetoLlamado);
+  if (!grupoEsperado) return; // sin objeto del llamado no hay nada que validar acá
+
+  const { data: modalidad, error } = await supabase
+    .from("modalidad")
+    .select("categoria")
+    .eq("id", modalidadId)
+    .maybeSingle();
+
+  if (error || !modalidad) {
+    throw new Error("La modalidad seleccionada no es válida.");
+  }
+  if (modalidad.categoria !== grupoEsperado) {
+    throw new Error("La modalidad seleccionada no es válida para el objeto del llamado.");
+  }
+}
+
+function validarValorCatalogo(valor: string | null, opciones: readonly string[], campo: string) {
+  if (valor !== null && !opciones.includes(valor)) {
+    throw new Error(`Valor no válido para "${campo}".`);
+  }
+}
+
 export async function crearLlamado(formData: FormData) {
   const supabase = await createClient();
 
@@ -45,14 +80,25 @@ export async function crearLlamado(formData: FormData) {
   const montoTotal = num(formData, "monto_total") ?? 0;
   const tipoCambio = num(formData, "tipo_cambio");
 
+  const objetoLlamado = str(formData, "objeto_llamado");
+  const modalidadId = str(formData, "modalidad_id");
+  const ambitoMercado = str(formData, "ambito_mercado");
+  const aperturaMercado = str(formData, "apertura_mercado");
+  const requisitosCalificacion = str(formData, "requisitos_calificacion");
+
+  await validarModalidadObjeto(supabase, objetoLlamado, modalidadId);
+  validarValorCatalogo(ambitoMercado, AMBITO_MERCADO_OPCIONES, "Ámbito de mercado");
+  validarValorCatalogo(aperturaMercado, APERTURA_MERCADO_OPCIONES, "Apertura de mercado");
+  validarValorCatalogo(requisitosCalificacion, REQUISITOS_CALIFICACION_OPCIONES, "Requisitos de Calificación");
+
   const payload = {
     nro_pac: str(formData, "nro_pac"),
     nro_proceso_interno: str(formData, "nro_proceso_interno"),
     nro_step: str(formData, "nro_step"),
     uoc_id: uocId,
-    modalidad_id: str(formData, "modalidad_id"),
+    modalidad_id: modalidadId,
     componente_id: str(formData, "componente_id"),
-    objeto_llamado: str(formData, "objeto_llamado"),
+    objeto_llamado: objetoLlamado,
     nombre_llamado: str(formData, "nombre_llamado"),
     moneda: str(formData, "moneda") ?? "PYG",
     monto_total: montoTotal,
@@ -61,8 +107,9 @@ export async function crearLlamado(formData: FormData) {
     estado_step: str(formData, "estado_step"),
     estado_actividad_step: str(formData, "estado_actividad_step"),
     tipo_revision: str(formData, "tipo_revision"),
-    apertura_mercado: str(formData, "apertura_mercado"),
-    ambito_mercado: str(formData, "ambito_mercado"),
+    apertura_mercado: aperturaMercado,
+    ambito_mercado: ambitoMercado,
+    requisitos_calificacion: requisitosCalificacion,
     plurianualidad: bool(formData, "plurianualidad"),
     ad_referendum: bool(formData, "ad_referendum"),
     categoria_llamado: str(formData, "categoria_llamado"),
@@ -103,14 +150,25 @@ export async function actualizarLlamado(id: string, formData: FormData) {
   const montoTotal = num(formData, "monto_total") ?? 0;
   const tipoCambio = num(formData, "tipo_cambio");
 
+  const objetoLlamado = str(formData, "objeto_llamado");
+  const modalidadId = str(formData, "modalidad_id");
+  const ambitoMercado = str(formData, "ambito_mercado");
+  const aperturaMercado = str(formData, "apertura_mercado");
+  const requisitosCalificacion = str(formData, "requisitos_calificacion");
+
+  await validarModalidadObjeto(supabase, objetoLlamado, modalidadId);
+  validarValorCatalogo(ambitoMercado, AMBITO_MERCADO_OPCIONES, "Ámbito de mercado");
+  validarValorCatalogo(aperturaMercado, APERTURA_MERCADO_OPCIONES, "Apertura de mercado");
+  validarValorCatalogo(requisitosCalificacion, REQUISITOS_CALIFICACION_OPCIONES, "Requisitos de Calificación");
+
   const payload = {
     nro_pac: str(formData, "nro_pac"),
     nro_proceso_interno: str(formData, "nro_proceso_interno"),
     nro_step: str(formData, "nro_step"),
     uoc_id: uocId,
-    modalidad_id: str(formData, "modalidad_id"),
+    modalidad_id: modalidadId,
     componente_id: str(formData, "componente_id"),
-    objeto_llamado: str(formData, "objeto_llamado"),
+    objeto_llamado: objetoLlamado,
     nombre_llamado: str(formData, "nombre_llamado"),
     moneda: str(formData, "moneda") ?? "PYG",
     monto_total: montoTotal,
@@ -120,8 +178,9 @@ export async function actualizarLlamado(id: string, formData: FormData) {
     estado_step: str(formData, "estado_step"),
     estado_actividad_step: str(formData, "estado_actividad_step"),
     tipo_revision: str(formData, "tipo_revision"),
-    apertura_mercado: str(formData, "apertura_mercado"),
-    ambito_mercado: str(formData, "ambito_mercado"),
+    apertura_mercado: aperturaMercado,
+    ambito_mercado: ambitoMercado,
+    requisitos_calificacion: requisitosCalificacion,
     plurianualidad: bool(formData, "plurianualidad"),
     ad_referendum: bool(formData, "ad_referendum"),
     situacion_actual: str(formData, "situacion_actual"),

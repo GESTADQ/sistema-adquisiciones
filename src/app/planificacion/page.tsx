@@ -84,7 +84,7 @@ export default async function PlanificacionPage() {
                 <th className="px-4 py-2 text-left font-medium text-slate-500">N° PAC</th>
                 <th className="px-4 py-2 text-left font-medium text-slate-500">N° STEP</th>
                 <th className="px-4 py-2 text-left font-medium text-slate-500">Objeto</th>
-                <th className="px-4 py-2 text-left font-medium text-slate-500">Modalidad</th>
+                <th className="px-4 py-2 text-left font-medium text-slate-500">Modalidad/Método</th>
                 <th className="px-4 py-2 text-left font-medium text-slate-500">Componente</th>
                 <th className="px-4 py-2 text-right font-medium text-slate-500">Monto</th>
                 <th className="px-4 py-2 text-left font-medium text-slate-500">Estado STEP</th>
