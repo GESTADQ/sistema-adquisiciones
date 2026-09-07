@@ -4,6 +4,8 @@ import Link from "next/link";
 import { actualizarLlamado } from "../../actions";
 import CategoriaLlamadoCampos from "../../CategoriaLlamadoCampos";
 import AppNav from "@/components/AppNav";
+import { OBJETO_LLAMADO_OPCIONES } from "@/lib/objetoLlamado";
+import { formatIdentificadorLlamado } from "@/lib/identificadorLlamado";
 
 const inputClass =
   "mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
@@ -46,7 +48,7 @@ export default async function EditarLlamadoPage({ params }: PageProps) {
           ← Volver al detalle del llamado
         </Link>
         <h1 className="mt-2 text-lg font-semibold text-slate-900">
-          Editar llamado — N° PAC {llamado.nro_pac}
+          Editar llamado — {formatIdentificadorLlamado(llamado.nro_proceso_interno, llamado.nro_pac)}
         </h1>
       </header>
 
@@ -54,8 +56,14 @@ export default async function EditarLlamadoPage({ params }: PageProps) {
         <form action={actualizarConId} className="max-w-3xl space-y-6 rounded-lg border border-slate-200 bg-white p-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>N° PAC *</label>
-              <input name="nro_pac" required defaultValue={llamado.nro_pac ?? ""} className={inputClass} />
+              <label className={labelClass}>N° de proceso interno *</label>
+              <input
+                name="nro_proceso_interno"
+                required
+                defaultValue={llamado.nro_proceso_interno ?? ""}
+                className={inputClass}
+              />
+              <p className="mt-1 text-xs text-slate-400">Identificador interno de UEP-IE/MOPC para este proceso.</p>
             </div>
             <div>
               <label className={labelClass}>N° STEP</label>
@@ -63,14 +71,35 @@ export default async function EditarLlamadoPage({ params }: PageProps) {
             </div>
           </div>
 
-          <div>
-            <label className={labelClass}>Objeto del llamado *</label>
-            <input
-              name="objeto_llamado"
-              required
-              defaultValue={llamado.objeto_llamado ?? ""}
-              className={inputClass}
-            />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>N° PAC</label>
+              <input name="nro_pac" defaultValue={llamado.nro_pac ?? ""} className={inputClass} />
+              <p className="mt-1 text-xs text-slate-400">
+                Se asigna recién cuando el llamado se sube al portal de la DNCP.
+              </p>
+            </div>
+            <div>
+              <label className={labelClass}>Objeto del llamado *</label>
+              <select
+                name="objeto_llamado"
+                required
+                defaultValue={llamado.objeto_llamado ?? ""}
+                className={inputClass}
+              >
+                <option value="" disabled>
+                  — Seleccionar —
+                </option>
+                {OBJETO_LLAMADO_OPCIONES.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+                {llamado.objeto_llamado && !(OBJETO_LLAMADO_OPCIONES as readonly string[]).includes(llamado.objeto_llamado) && (
+                  <option value={llamado.objeto_llamado}>{llamado.objeto_llamado} (valor actual, fuera de catálogo)</option>
+                )}
+              </select>
+            </div>
           </div>
 
           <div>
