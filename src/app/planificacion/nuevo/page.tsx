@@ -4,6 +4,7 @@ import Link from "next/link";
 import { crearLlamado } from "../actions";
 import CategoriaLlamadoCampos from "../CategoriaLlamadoCampos";
 import AppNav from "@/components/AppNav";
+import { OBJETO_LLAMADO_OPCIONES } from "@/lib/objetoLlamado";
 
 const inputClass =
   "mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
@@ -42,8 +43,9 @@ export default async function NuevoLlamadoPage() {
         <form action={crearLlamado} className="max-w-3xl space-y-6 rounded-lg border border-slate-200 bg-white p-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>N° PAC *</label>
-              <input name="nro_pac" required className={inputClass} />
+              <label className={labelClass}>N° de proceso interno *</label>
+              <input name="nro_proceso_interno" required className={inputClass} />
+              <p className="mt-1 text-xs text-slate-400">Identificador interno de UEP-IE/MOPC para este proceso.</p>
             </div>
             <div>
               <label className={labelClass}>N° STEP</label>
@@ -51,9 +53,27 @@ export default async function NuevoLlamadoPage() {
             </div>
           </div>
 
-          <div>
-            <label className={labelClass}>Objeto del llamado *</label>
-            <input name="objeto_llamado" required className={inputClass} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>N° PAC</label>
+              <input name="nro_pac" className={inputClass} />
+              <p className="mt-1 text-xs text-slate-400">
+                Se asigna recién cuando el llamado se sube al portal de la DNCP — dejalo en blanco hasta entonces.
+              </p>
+            </div>
+            <div>
+              <label className={labelClass}>Objeto del llamado *</label>
+              <select name="objeto_llamado" required className={inputClass} defaultValue="">
+                <option value="" disabled>
+                  — Seleccionar —
+                </option>
+                {OBJETO_LLAMADO_OPCIONES.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div>
