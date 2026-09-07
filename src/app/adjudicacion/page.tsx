@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import AppNav from "@/components/AppNav";
+import { formatIdentificadorLlamado } from "@/lib/identificadorLlamado";
 
 function formatMonto(monto: number | null, moneda: string) {
   if (monto === null || monto === undefined) return "—";
@@ -26,8 +27,9 @@ export default async function AdjudicacionPage() {
   const [{ data: llamados, error }, { data: adjudicaciones }] = await Promise.all([
     supabase
       .from("llamado")
-      .select("id, nro_pac, nro_step, nombre_llamado, objeto_llamado, moneda")
+      .select("id, nro_pac, nro_proceso_interno, nro_step, nombre_llamado, objeto_llamado, moneda")
       .eq("estado_general", "Activo")
+      .order("nro_proceso_interno", { nullsFirst: false })
       .order("nro_pac"),
     supabase.from("adjudicacion").select("llamado_id, nro_resolucion, monto_adjudicado, fecha_resolucion"),
   ]);
@@ -68,7 +70,9 @@ export default async function AdjudicacionPage() {
                 const adj = adjudicacionPorLlamado.get(l.id);
                 return (
                   <tr key={l.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-2 font-medium text-slate-900">{l.nro_pac}</td>
+                    <td className="px-4 py-2 font-medium text-slate-900">
+                      {formatIdentificadorLlamado(l.nro_proceso_interno, l.nro_pac)}
+                    </td>
                     <td className="px-4 py-2 text-slate-700">{l.nombre_llamado || l.objeto_llamado}</td>
                     <td className="px-4 py-2 text-slate-600">{adj?.nro_resolucion ?? "—"}</td>
                     <td className="px-4 py-2 text-right text-slate-700">
