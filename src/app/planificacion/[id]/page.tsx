@@ -13,6 +13,7 @@ import {
 } from "../actions";
 import { HITOS_POR_CATEGORIA, esCategoriaLlamadoValida } from "@/lib/hitosStep";
 import AppNav from "@/components/AppNav";
+import { formatIdentificadorLlamado } from "@/lib/identificadorLlamado";
 
 const inputClass =
   "mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
@@ -90,7 +91,7 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
   const { data: llamado, error } = await supabase
     .from("llamado")
     .select(
-      `id, nro_pac, nro_step, objeto_llamado, nombre_llamado, moneda, plurianualidad, ad_referendum,
+      `id, nro_pac, nro_proceso_interno, nro_step, objeto_llamado, nombre_llamado, moneda, plurianualidad, ad_referendum,
        monto_total, monto_estimado_usd, tipo_revision, estado_step, estado_actividad_step,
        apertura_mercado, ambito_mercado, estado_general, fecha_estimada_llamado,
        situacion_actual, etapa_interna_actual, ultimo_seguimiento, proxima_accion, observaciones,
@@ -108,12 +109,12 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
     notFound();
   }
 
-  const [{ data: lineas }, { data: cronograma }, { data: usuarios }, { data: hitos }] =
+  const [{ data: lineas }, { data: cronograma }, { data: usuarios }, { data: hitos }, { data: objetosGasto }] =
     await Promise.all([
       supabase
         .from("llamado_linea_presupuestaria")
         .select(
-          "id, clase, programa, subprograma, proyecto_actividad, sgog, fuente_financiamiento, organismo_financiador, departamento, cuenta, monto, ejercicio_fiscal"
+          "id, clase, programa, subprograma, proyecto_actividad, sgog, objeto_gasto_id, objeto_gasto:objeto_gasto_id(codigo, descripcion), fuente_financiamiento, organismo_financiador, departamento, cuenta, monto, ejercicio_fiscal"
         )
         .eq("llamado_id", id)
         .order("ejercicio_fiscal"),
@@ -126,6 +127,7 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
         .order("orden"),
       supabase.from("usuario").select("id, nombre").order("nombre"),
       supabase.from("llamado_hito").select("id, tipo_hito, fecha_planificada, fecha_real").eq("llamado_id", id),
+      supabase.from("objeto_gasto").select("id, codigo, descripcion").order("codigo"),
     ]);
 
   const crearLineaConId = crearLineaPresupuestaria.bind(null, id);
@@ -153,7 +155,8 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
         <div className="mt-2 flex items-start justify-between gap-4">
           <div>
             <h1 className="text-lg font-semibold text-slate-900">
-              N° PAC {llamado.nro_pac} {llamado.nro_step ? `· STEP ${llamado.nro_step}` : ""}
+              {formatIdentificadorLlamado(llamado.nro_proceso_interno, llamado.nro_pac)}
+              {llamado.nro_step ? ` · STEP ${llamado.nro_step}` : ""}
             </h1>
             <p className="mt-1 max-w-3xl text-sm text-slate-600">
               {llamado.nombre_llamado || llamado.objeto_llamado}
@@ -280,6 +283,7 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Subprograma</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Proyecto/Actividad</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">SGOG</th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-500">Objeto del gasto</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Fuente financ.</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Departamento</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Cuenta</th>
@@ -290,6 +294,7 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
                 <tbody className="divide-y divide-slate-100">
                   {lineas.map((l) => {
                     const eliminarConIds = eliminarLineaPresupuestaria.bind(null, l.id, id);
+                    const objetoGastoLinea = l.objeto_gasto as unknown as { codigo: string; descripcion: string } | null;
                     return (
                       <tr key={l.id} className="hover:bg-slate-50">
                         <td className="px-3 py-2 text-slate-700">{l.ejercicio_fiscal ?? "—"}</td>
@@ -298,6 +303,9 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
                         <td className="px-3 py-2 text-slate-700">{l.subprograma ?? "—"}</td>
                         <td className="px-3 py-2 text-slate-700">{l.proyecto_actividad ?? "—"}</td>
                         <td className="px-3 py-2 text-slate-600">{l.sgog ?? "—"}</td>
+                        <td className="px-3 py-2 text-slate-600">
+                          {objetoGastoLinea ? `${objetoGastoLinea.codigo} · ${objetoGastoLinea.descripcion}` : "—"}
+                        </td>
                         <td className="px-3 py-2 text-slate-600">{l.fuente_financiamiento ?? "—"}</td>
                         <td className="px-3 py-2 text-slate-600">{l.departamento ?? "—"}</td>
                         <td className="px-3 py-2 text-slate-600">{l.cuenta ?? "—"}</td>
@@ -347,6 +355,17 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
               <div>
                 <label className={labelClass}>SGOG</label>
                 <input name="sgog" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Objeto del gasto</label>
+                <select name="objeto_gasto_id" className={inputClass} defaultValue="">
+                  <option value="">— Sin definir —</option>
+                  {objetosGasto?.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.codigo} · {o.descripcion}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className={labelClass}>Fuente de financiamiento</label>
