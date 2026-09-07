@@ -47,6 +47,7 @@ export async function crearLlamado(formData: FormData) {
 
   const payload = {
     nro_pac: str(formData, "nro_pac"),
+    nro_proceso_interno: str(formData, "nro_proceso_interno"),
     nro_step: str(formData, "nro_step"),
     uoc_id: uocId,
     modalidad_id: str(formData, "modalidad_id"),
@@ -104,6 +105,7 @@ export async function actualizarLlamado(id: string, formData: FormData) {
 
   const payload = {
     nro_pac: str(formData, "nro_pac"),
+    nro_proceso_interno: str(formData, "nro_proceso_interno"),
     nro_step: str(formData, "nro_step"),
     uoc_id: uocId,
     modalidad_id: str(formData, "modalidad_id"),
@@ -162,6 +164,7 @@ export async function crearLineaPresupuestaria(llamadoId: string, formData: Form
     subprograma: str(formData, "subprograma"),
     proyecto_actividad: str(formData, "proyecto_actividad"),
     sgog: str(formData, "sgog"),
+    objeto_gasto_id: str(formData, "objeto_gasto_id"),
     fuente_financiamiento: str(formData, "fuente_financiamiento"),
     organismo_financiador: str(formData, "organismo_financiador"),
     departamento: str(formData, "departamento"),

@@ -35,9 +35,10 @@ export default async function PlanificacionPage() {
   const { data: llamados, error } = await supabase
     .from("llamado")
     .select(
-      "id, nro_pac, nro_step, nombre_llamado, objeto_llamado, monto_total, moneda, estado_step, estado_general, modalidad:modalidad_id(nombre), componente:componente_id(nombre)"
+      "id, nro_pac, nro_proceso_interno, nro_step, nombre_llamado, objeto_llamado, monto_total, moneda, estado_step, estado_general, modalidad:modalidad_id(nombre), componente:componente_id(nombre)"
     )
     .eq("estado_general", "Activo")
+    .order("nro_proceso_interno", { nullsFirst: false })
     .order("nro_pac");
 
   return (
@@ -79,6 +80,7 @@ export default async function PlanificacionPage() {
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50">
               <tr>
+                <th className="px-4 py-2 text-left font-medium text-slate-500">Proceso interno</th>
                 <th className="px-4 py-2 text-left font-medium text-slate-500">N° PAC</th>
                 <th className="px-4 py-2 text-left font-medium text-slate-500">N° STEP</th>
                 <th className="px-4 py-2 text-left font-medium text-slate-500">Objeto</th>
@@ -93,9 +95,10 @@ export default async function PlanificacionPage() {
                 <tr key={l.id} className="hover:bg-slate-50">
                   <td className="px-4 py-2 font-medium text-slate-900">
                     <Link href={`/planificacion/${l.id}`} className="text-blue-600 hover:underline">
-                      {l.nro_pac}
+                      {l.nro_proceso_interno ?? "—"}
                     </Link>
                   </td>
+                  <td className="px-4 py-2 text-slate-600">{l.nro_pac ?? "—"}</td>
                   <td className="px-4 py-2 text-slate-600">{l.nro_step ?? "—"}</td>
                   <td className="px-4 py-2 text-slate-700">
                     <Link href={`/planificacion/${l.id}`} className="hover:underline">
