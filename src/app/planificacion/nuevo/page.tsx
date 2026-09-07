@@ -3,8 +3,10 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { crearLlamado } from "../actions";
 import CategoriaLlamadoCampos from "../CategoriaLlamadoCampos";
+import ObjetoModalidadCampos from "../ObjetoModalidadCampos";
 import AppNav from "@/components/AppNav";
-import { OBJETO_LLAMADO_OPCIONES } from "@/lib/objetoLlamado";
+import { AMBITO_MERCADO_OPCIONES, APERTURA_MERCADO_OPCIONES } from "@/lib/mercado";
+import { REQUISITOS_CALIFICACION_OPCIONES } from "@/lib/requisitosCalificacion";
 
 const inputClass =
   "mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
@@ -24,7 +26,7 @@ export default async function NuevoLlamadoPage() {
   const [{ data: uocs }, { data: modalidades }, { data: componentes }, { data: objetosGasto }] =
     await Promise.all([
       supabase.from("entidad_uoc").select("id, entidad, uoc, sub_uoc").order("uoc"),
-      supabase.from("modalidad").select("id, nombre").order("nombre"),
+      supabase.from("modalidad").select("id, nombre, categoria").order("nombre"),
       supabase.from("componente_proyecto").select("id, nombre").order("nombre"),
       supabase.from("objeto_gasto").select("id, codigo, descripcion").order("codigo"),
     ]);
@@ -61,27 +63,16 @@ export default async function NuevoLlamadoPage() {
                 Se asigna recién cuando el llamado se sube al portal de la DNCP — dejalo en blanco hasta entonces.
               </p>
             </div>
-            <div>
-              <label className={labelClass}>Objeto del llamado *</label>
-              <select name="objeto_llamado" required className={inputClass} defaultValue="">
-                <option value="" disabled>
-                  — Seleccionar —
-                </option>
-                {OBJETO_LLAMADO_OPCIONES.map((o) => (
-                  <option key={o} value={o}>
-                    {o}
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
+
+          <ObjetoModalidadCampos modalidades={modalidades ?? []} />
 
           <div>
             <label className={labelClass}>Nombre del llamado *</label>
             <input name="nombre_llamado" required className={inputClass} />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className={labelClass}>UOC *</label>
               <select name="uoc_id" required className={inputClass} defaultValue="">
@@ -97,23 +88,48 @@ export default async function NuevoLlamadoPage() {
               </select>
             </div>
             <div>
-              <label className={labelClass}>Modalidad</label>
-              <select name="modalidad_id" className={inputClass} defaultValue="">
-                <option value="">— Sin definir —</option>
-                {modalidades?.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
               <label className={labelClass}>Componente</label>
               <select name="componente_id" className={inputClass} defaultValue="">
                 <option value="">— Sin definir —</option>
                 {componentes?.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div>
+              <label className={labelClass}>Ámbito de mercado</label>
+              <select name="ambito_mercado" className={inputClass} defaultValue="">
+                <option value="">— Sin definir —</option>
+                {AMBITO_MERCADO_OPCIONES.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>Apertura de mercado</label>
+              <select name="apertura_mercado" className={inputClass} defaultValue="">
+                <option value="">— Sin definir —</option>
+                {APERTURA_MERCADO_OPCIONES.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>Requisitos de Calificación</label>
+              <select name="requisitos_calificacion" className={inputClass} defaultValue="">
+                <option value="">— Sin definir —</option>
+                {REQUISITOS_CALIFICACION_OPCIONES.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
                   </option>
                 ))}
               </select>
@@ -169,17 +185,6 @@ export default async function NuevoLlamadoPage() {
             <div>
               <label className={labelClass}>Estado actividad STEP</label>
               <input name="estado_actividad_step" className={inputClass} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className={labelClass}>Ámbito de mercado</label>
-              <input name="ambito_mercado" className={inputClass} />
-            </div>
-            <div>
-              <label className={labelClass}>Apertura de mercado</label>
-              <input name="apertura_mercado" className={inputClass} />
             </div>
           </div>
 
