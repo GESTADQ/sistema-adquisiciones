@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import AppNav from "@/components/AppNav";
 import { crearMovimiento, eliminarMovimiento } from "../actions";
+import { formatIdentificadorLlamado } from "@/lib/identificadorLlamado";
 
 const inputClass =
   "w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
@@ -39,7 +40,9 @@ export default async function FinancieroDetallePage({
 
   const { data: llamado } = await supabase
     .from("llamado")
-    .select("id, nro_pac, nombre_llamado, objeto_llamado, monto_estimado_usd, monto_total, moneda, componente_id")
+    .select(
+      "id, nro_pac, nro_proceso_interno, nombre_llamado, objeto_llamado, monto_estimado_usd, monto_total, moneda, componente_id"
+    )
     .eq("id", llamadoId)
     .maybeSingle();
 
@@ -72,7 +75,8 @@ export default async function FinancieroDetallePage({
           ← Volver a Financiero
         </Link>
         <h1 className="mt-1 text-lg font-semibold text-slate-900">
-          {llamado.nro_pac} — {llamado.nombre_llamado || llamado.objeto_llamado}
+          {formatIdentificadorLlamado(llamado.nro_proceso_interno, llamado.nro_pac)} —{" "}
+          {llamado.nombre_llamado || llamado.objeto_llamado}
         </h1>
         <p className="text-sm text-slate-500">
           Estimado en Planificación: {llamado.monto_estimado_usd ? `USD ${formatMonto(llamado.monto_estimado_usd)}` : "—"}
