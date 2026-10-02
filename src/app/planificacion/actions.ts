@@ -213,19 +213,46 @@ export async function actualizarLlamado(id: string, formData: FormData) {
   redirect(`/planificacion/${id}`);
 }
 
+// Valores fijos de Clase/Programa/Proyecto-Actividad para la línea
+// presupuestaria del PAC (pedido de Martin, 2/10/2026) — siempre son estos
+// tres valores para este proyecto, así que se fijan acá en vez de pedirlos
+// por formulario. Si en el futuro cambiaran, se ajustan en este único lugar.
+const LINEA_PRESUPUESTARIA_CLASE_FIJA = "1";
+const LINEA_PRESUPUESTARIA_PROGRAMA_FIJO = "001";
+const LINEA_PRESUPUESTARIA_PROYECTO_ACTIVIDAD_FIJO = "57";
+const LINEA_PRESUPUESTARIA_FF_FIJA = "20";
+const LINEA_PRESUPUESTARIA_OF_FIJO = "402";
+
 export async function crearLineaPresupuestaria(llamadoId: string, formData: FormData) {
   const supabase = await createClient();
 
+  const objetoGastoId = str(formData, "objeto_gasto_id");
+
+  // SGOG (dato único): el <select> "objeto_gasto_id" ya es el catálogo del
+  // Clasificador Presupuestario (código SGOG). La columna de texto libre
+  // "sgog" se mantiene solo por compatibilidad con reportes existentes y se
+  // completa automáticamente con el código elegido, para no pedir el mismo
+  // dato dos veces.
+  let sgog: string | null = null;
+  if (objetoGastoId) {
+    const { data: objetoGasto } = await supabase
+      .from("objeto_gasto")
+      .select("codigo")
+      .eq("id", objetoGastoId)
+      .maybeSingle();
+    sgog = objetoGasto?.codigo ?? null;
+  }
+
   const payload = {
     llamado_id: llamadoId,
-    clase: str(formData, "clase"),
-    programa: str(formData, "programa"),
+    clase: str(formData, "clase") ?? LINEA_PRESUPUESTARIA_CLASE_FIJA,
+    programa: str(formData, "programa") ?? LINEA_PRESUPUESTARIA_PROGRAMA_FIJO,
     subprograma: str(formData, "subprograma"),
-    proyecto_actividad: str(formData, "proyecto_actividad"),
-    sgog: str(formData, "sgog"),
-    objeto_gasto_id: str(formData, "objeto_gasto_id"),
-    fuente_financiamiento: str(formData, "fuente_financiamiento"),
-    organismo_financiador: str(formData, "organismo_financiador"),
+    proyecto_actividad: str(formData, "proyecto_actividad") ?? LINEA_PRESUPUESTARIA_PROYECTO_ACTIVIDAD_FIJO,
+    sgog,
+    objeto_gasto_id: objetoGastoId,
+    fuente_financiamiento: str(formData, "fuente_financiamiento") ?? LINEA_PRESUPUESTARIA_FF_FIJA,
+    organismo_financiador: str(formData, "organismo_financiador") ?? LINEA_PRESUPUESTARIA_OF_FIJO,
     departamento: str(formData, "departamento"),
     cuenta: str(formData, "cuenta"),
     monto: num(formData, "monto") ?? 0,
