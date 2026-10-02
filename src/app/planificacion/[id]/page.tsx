@@ -10,6 +10,10 @@ import {
   crearHito,
   actualizarHito,
   eliminarHito,
+  crearMontoEjercicio,
+  eliminarMontoEjercicio,
+  crearCodigoCatalogoDetalle,
+  eliminarCodigoCatalogoDetalle,
 } from "../actions";
 import { HITOS_POR_CATEGORIA, esCategoriaLlamadoValida } from "@/lib/hitosStep";
 import AppNav from "@/components/AppNav";
@@ -98,6 +102,9 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
        situacion_actual, etapa_interna_actual, ultimo_seguimiento, proxima_accion, observaciones,
        categoria_llamado, categoria_inversion, tipo_cambio, precalificacion, proceso_contratacion,
        opciones_evaluacion, riesgo_esas, tipo_documento_contratacion, requisitos_calificacion,
+       nivel_entidad, entidad, uoc_uep, sub_uoc, unidad_jerarquica, codigo_sicp,
+       nro_referencia_step, categoria_step, metodo_adquisicion_step, componente_step,
+       numero_etapas, numero_sobres, descripcion_step, descripcion_step_sincronizada,
        modalidad:modalidad_id(nombre, organismo_financiador),
        componente:componente_id(nombre, subcomponente),
        uoc:uoc_id(entidad, uoc, sub_uoc),
@@ -110,8 +117,15 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
     notFound();
   }
 
-  const [{ data: lineas }, { data: cronograma }, { data: usuarios }, { data: hitos }, { data: objetosGasto }] =
-    await Promise.all([
+  const [
+    { data: lineas },
+    { data: cronograma },
+    { data: usuarios },
+    { data: hitos },
+    { data: objetosGasto },
+    { data: montosEjercicio },
+    { data: codigoCatalogoDetalle },
+  ] = await Promise.all([
       supabase
         .from("llamado_linea_presupuestaria")
         .select(
@@ -129,10 +143,25 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
       supabase.from("usuario").select("id, nombre").order("nombre"),
       supabase.from("llamado_hito").select("id, tipo_hito, fecha_planificada, fecha_real").eq("llamado_id", id),
       supabase.from("objeto_gasto").select("id, codigo, descripcion").order("codigo"),
+      supabase
+        .from("llamado_monto_ejercicio")
+        .select("id, ejercicio_fiscal, monto")
+        .eq("llamado_id", id)
+        .order("ejercicio_fiscal"),
+      supabase
+        .from("pac_codigo_catalogo_detalle")
+        .select("id, codigo, descripcion, monto, orden")
+        .eq("llamado_id", id)
+        .order("orden"),
     ]);
 
   const crearLineaConId = crearLineaPresupuestaria.bind(null, id);
   const crearEtapaConId = crearEtapaCronograma.bind(null, id);
+  const crearMontoEjercicioConId = crearMontoEjercicio.bind(null, id);
+  const crearCodigoCatalogoConId = crearCodigoCatalogoDetalle.bind(null, id);
+
+  const totalMontosEjercicio = (montosEjercicio ?? []).reduce((acc, m) => acc + (m.monto ?? 0), 0);
+  const totalCodigoCatalogo = (codigoCatalogoDetalle ?? []).reduce((acc, c) => acc + (c.monto ?? 0), 0);
 
   const catalogoHitos = esCategoriaLlamadoValida(llamado.categoria_llamado)
     ? HITOS_POR_CATEGORIA[llamado.categoria_llamado]
@@ -235,6 +264,44 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
               </dl>
             </div>
           )}
+        </section>
+
+        {/* Encabezado PAC (Anexo B-02-02) */}
+        <section className="rounded-lg border border-slate-200 bg-white p-5">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Encabezado PAC (Anexo B-02-02) — datos de la entidad
+          </h2>
+          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Campo label="Nivel de entidad" valor={llamado.nivel_entidad} />
+            <Campo label="Entidad" valor={llamado.entidad} />
+            <Campo label="UOC/UEP" valor={llamado.uoc_uep} />
+            <Campo label="Sub UOC" valor={llamado.sub_uoc} />
+            <Campo label="Unidad jerárquica" valor={llamado.unidad_jerarquica} />
+            <Campo label="Código SICP" valor={llamado.codigo_sicp} />
+          </dl>
+        </section>
+
+        {/* Proceso de adquisiciones STEP */}
+        <section className="rounded-lg border border-slate-200 bg-white p-5">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Proceso de adquisiciones STEP (Banco Mundial)
+          </h2>
+          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Campo label="N° de referencia STEP" valor={llamado.nro_referencia_step} />
+            <Campo label="Componente STEP" valor={llamado.componente_step} />
+            <Campo label="Categoría de adquisiciones STEP" valor={llamado.categoria_step} />
+            <Campo label="Método de adquisición STEP" valor={llamado.metodo_adquisicion_step} />
+            <Campo label="Número de etapas" valor={llamado.numero_etapas} />
+            <Campo label="Número de sobres" valor={llamado.numero_sobres} />
+            <Campo
+              label="Descripción STEP"
+              valor={
+                llamado.descripcion_step
+                  ? `${llamado.descripcion_step}${llamado.descripcion_step_sincronizada ? " (sincronizada)" : ""}`
+                  : undefined
+              }
+            />
+          </dl>
         </section>
 
         {/* Seguimiento interno */}
@@ -430,6 +497,185 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
                   className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
                 >
                   Agregar línea
+                </button>
+              </div>
+            </form>
+          </details>
+        </section>
+
+        {/* Montos por ejercicio fiscal (Tabla 2 del PAC) */}
+        <section className="rounded-lg border border-slate-200 bg-white p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+              Montos por ejercicio fiscal (PAC)
+            </h2>
+            <span className="text-sm text-slate-500">
+              Total {formatMonto(totalMontosEjercicio, llamado.moneda)}
+              {llamado.monto_total ? ` / Monto total ${formatMonto(llamado.monto_total, llamado.moneda)}` : ""}
+            </span>
+          </div>
+          <p className="mb-3 text-xs text-slate-400">
+            Distribución del Monto total entre hasta 6 ejercicios fiscales (llamados plurianuales) — alimenta la
+            Tabla 2 del reporte PAC. Si no se carga nada acá, el reporte sigue derivando el dato de las líneas
+            presupuestarias, como antes.
+          </p>
+          {totalMontosEjercicio > 0 && llamado.monto_total && totalMontosEjercicio !== llamado.monto_total && (
+            <p className="mb-3 text-xs font-medium text-amber-700">
+              ⚠ La suma de los montos por ejercicio ({formatMonto(totalMontosEjercicio, llamado.moneda)}) no coincide
+              con el Monto total ({formatMonto(llamado.monto_total, llamado.moneda)}).
+            </p>
+          )}
+          {!montosEjercicio || montosEjercicio.length === 0 ? (
+            <p className="text-sm text-slate-500">Este llamado no tiene montos por ejercicio cargados.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200 text-sm">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium text-slate-500">Ejercicio fiscal</th>
+                    <th className="px-3 py-2 text-right font-medium text-slate-500">Monto</th>
+                    <th className="px-3 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {montosEjercicio.map((m) => {
+                    const eliminarConIds = eliminarMontoEjercicio.bind(null, m.id, id);
+                    return (
+                      <tr key={m.id} className="hover:bg-slate-50">
+                        <td className="px-3 py-2 text-slate-700">{m.ejercicio_fiscal}</td>
+                        <td className="px-3 py-2 text-right font-medium text-slate-800">
+                          {formatMonto(m.monto, llamado.moneda)}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <form action={eliminarConIds}>
+                            <button type="submit" className="text-xs text-red-600 hover:underline">
+                              Eliminar
+                            </button>
+                          </form>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <details className="mt-4 rounded-md border border-slate-200">
+            <summary className="cursor-pointer px-4 py-2 text-sm font-medium text-blue-600">
+              + Agregar monto por ejercicio
+            </summary>
+            <form
+              action={crearMontoEjercicioConId}
+              className="grid grid-cols-1 gap-3 border-t border-slate-200 p-4 sm:grid-cols-3"
+            >
+              <div>
+                <label className={labelClass}>Ejercicio fiscal *</label>
+                <input name="ejercicio_fiscal" type="number" required className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Monto *</label>
+                <input name="monto" type="number" step="0.01" required className={inputClass} />
+              </div>
+              <div className="flex items-end">
+                <button
+                  type="submit"
+                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                >
+                  Agregar monto
+                </button>
+              </div>
+            </form>
+          </details>
+        </section>
+
+        {/* Códigos de catálogo (Tabla 4 del PAC) */}
+        <section className="rounded-lg border border-slate-200 bg-white p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+              Códigos de catálogo (PAC — Tabla 4)
+            </h2>
+            <span className="text-sm text-slate-500">
+              {codigoCatalogoDetalle?.length ?? 0} código
+              {(codigoCatalogoDetalle?.length ?? 0) === 1 ? "" : "s"} · Total{" "}
+              {formatMonto(totalCodigoCatalogo, llamado.moneda)}
+            </span>
+          </div>
+          <p className="mb-3 text-xs text-slate-400">
+            Filas repetibles de &quot;Código catálogo / Descripción del bien, servicio, consultoría y/u obra pública
+            / Monto&quot;. Mientras haya una sola fila, se sincroniza automáticamente con los campos manuales de
+            &quot;Datos para el PAC&quot; en Editar; con más de una fila, el reporte PAC usa este detalle completo.
+          </p>
+          {!codigoCatalogoDetalle || codigoCatalogoDetalle.length === 0 ? (
+            <p className="text-sm text-slate-500">Este llamado no tiene códigos de catálogo cargados.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200 text-sm">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium text-slate-500">Orden</th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-500">Código catálogo</th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-500">Descripción</th>
+                    <th className="px-3 py-2 text-right font-medium text-slate-500">Monto</th>
+                    <th className="px-3 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {codigoCatalogoDetalle.map((c) => {
+                    const eliminarConIds = eliminarCodigoCatalogoDetalle.bind(null, c.id, id);
+                    return (
+                      <tr key={c.id} className="hover:bg-slate-50">
+                        <td className="px-3 py-2 text-slate-700">{c.orden}</td>
+                        <td className="px-3 py-2 text-slate-700">{c.codigo}</td>
+                        <td className="px-3 py-2 text-slate-600">{c.descripcion ?? "—"}</td>
+                        <td className="px-3 py-2 text-right font-medium text-slate-800">
+                          {formatMonto(c.monto, llamado.moneda)}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <form action={eliminarConIds}>
+                            <button type="submit" className="text-xs text-red-600 hover:underline">
+                              Eliminar
+                            </button>
+                          </form>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <details className="mt-4 rounded-md border border-slate-200">
+            <summary className="cursor-pointer px-4 py-2 text-sm font-medium text-blue-600">
+              + Agregar código de catálogo
+            </summary>
+            <form
+              action={crearCodigoCatalogoConId}
+              className="grid grid-cols-1 gap-3 border-t border-slate-200 p-4 sm:grid-cols-4"
+            >
+              <div>
+                <label className={labelClass}>Código catálogo *</label>
+                <input name="codigo" required className={inputClass} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className={labelClass}>Descripción del bien/servicio/consultoría/obra</label>
+                <input name="descripcion" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Orden</label>
+                <input name="orden" type="number" defaultValue={0} className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Monto *</label>
+                <input name="monto" type="number" step="0.01" required className={inputClass} />
+              </div>
+              <div className="flex items-end sm:col-span-3">
+                <button
+                  type="submit"
+                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                >
+                  Agregar código
                 </button>
               </div>
             </form>
