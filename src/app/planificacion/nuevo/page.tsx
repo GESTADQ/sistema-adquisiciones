@@ -4,6 +4,8 @@ import Link from "next/link";
 import { crearLlamado } from "../actions";
 import CategoriaLlamadoCampos from "../CategoriaLlamadoCampos";
 import ObjetoModalidadCampos from "../ObjetoModalidadCampos";
+import EncabezadoPacCampos from "../EncabezadoPacCampos";
+import StepCampos from "../StepCampos";
 import AppNav from "@/components/AppNav";
 import { AMBITO_MERCADO_OPCIONES, APERTURA_MERCADO_OPCIONES } from "@/lib/mercado";
 import { REQUISITOS_CALIFICACION_OPCIONES } from "@/lib/requisitosCalificacion";
@@ -71,6 +73,8 @@ export default async function NuevoLlamadoPage() {
             <label className={labelClass}>Nombre del llamado *</label>
             <input name="nombre_llamado" required className={inputClass} />
           </div>
+
+          <EncabezadoPacCampos />
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
@@ -187,6 +191,8 @@ export default async function NuevoLlamadoPage() {
               <input name="estado_actividad_step" className={inputClass} />
             </div>
           </div>
+
+          <StepCampos />
 
           <div className="flex gap-6">
             <label className="flex items-center gap-2 text-sm text-slate-700">
