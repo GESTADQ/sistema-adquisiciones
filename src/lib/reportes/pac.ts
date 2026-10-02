@@ -50,6 +50,7 @@ const TEMPLATE_PATH = path.join(
 
 const HOJA_PAC = "Anexo B-02-02 PAC";
 const COLUMNAS_ANIO = [4, 6, 9, 12, 14, 16]; // D, F, I, L, N, P — hasta 6 ejercicios fiscales
+const MAX_FILAS_TABLA4 = 7; // filas 34 a 40, total en 41 (mismo patrón que Tabla 5)
 const MAX_FILAS_TABLA5 = 7; // filas 44 a 50
 
 type LineaPac = {
@@ -76,7 +77,25 @@ type LlamadoPac = {
   monto_total: number;
   pac_codigo_catalogo: string | null;
   pac_descripcion_bien: string | null;
+  nivel_entidad: string | null;
+  entidad: string | null;
+  uoc_uep: string | null;
+  sub_uoc: string | null;
+  unidad_jerarquica: string | null;
+  codigo_sicp: string | null;
   modalidad: { nombre: string } | null;
+};
+
+type MontoEjercicioPac = {
+  ejercicio_fiscal: number;
+  monto: number | null;
+};
+
+type CodigoCatalogoDetallePac = {
+  codigo: string;
+  descripcion: string | null;
+  monto: number | null;
+  orden: number;
 };
 
 function monedaLabel(moneda: string | null): string {
@@ -100,6 +119,7 @@ export async function generarPacWorkbook(llamadoId: string): Promise<{
     .select(
       `id, nro_pac, objeto_llamado, nombre_llamado, fecha_estimada_llamado, moneda,
        plurianualidad, ad_referendum, monto_total, pac_codigo_catalogo, pac_descripcion_bien,
+       nivel_entidad, entidad, uoc_uep, sub_uoc, unidad_jerarquica, codigo_sicp,
        modalidad:modalidad_id(nombre)`
     )
     .eq("id", llamadoId)
@@ -125,6 +145,29 @@ export async function generarPacWorkbook(llamadoId: string): Promise<{
 
   const lineas = (lineasRaw ?? []) as LineaPac[];
 
+  const { data: montosEjercicioRaw, error: errorMontosEjercicio } = await supabase
+    .from("llamado_monto_ejercicio")
+    .select("ejercicio_fiscal, monto")
+    .eq("llamado_id", llamadoId);
+
+  if (errorMontosEjercicio) {
+    throw new Error(`No se pudieron leer los montos por ejercicio del llamado: ${errorMontosEjercicio.message}`);
+  }
+
+  const montosEjercicio = (montosEjercicioRaw ?? []) as MontoEjercicioPac[];
+
+  const { data: detalleCatalogoRaw, error: errorDetalleCatalogo } = await supabase
+    .from("pac_codigo_catalogo_detalle")
+    .select("codigo, descripcion, monto, orden")
+    .eq("llamado_id", llamadoId)
+    .order("orden");
+
+  if (errorDetalleCatalogo) {
+    throw new Error(`No se pudo leer el detalle de códigos de catálogo del llamado: ${errorDetalleCatalogo.message}`);
+  }
+
+  const detalleCatalogo = (detalleCatalogoRaw ?? []) as CodigoCatalogoDetallePac[];
+
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(TEMPLATE_PATH);
   const sheet = workbook.getWorksheet(HOJA_PAC);
@@ -142,14 +185,16 @@ export async function generarPacWorkbook(llamadoId: string): Promise<{
   // cual quedaba desactualizado o vacío según los datos cargados).
   const anioBase = new Date().getFullYear() + 1;
 
-  // --- Encabezado fijo de entidad ---
+  // --- Encabezado de entidad (editable por llamado desde 2/10/2026; se usa el
+  // valor propio del llamado y, si por algún motivo viniera vacío, se recurre
+  // al valor fijo histórico como respaldo) ---
   sheet.getCell(13, 14).value = `EJERCICIO FISCAL ${anioBase}`;
-  sheet.getCell("E14").value = PAC_ENCABEZADO_FIJO.nivelEntidad;
-  sheet.getCell("E15").value = PAC_ENCABEZADO_FIJO.entidad;
-  sheet.getCell("E16").value = PAC_ENCABEZADO_FIJO.uocUep;
-  sheet.getCell("E17").value = PAC_ENCABEZADO_FIJO.subUoc;
-  sheet.getCell("E18").value = PAC_ENCABEZADO_FIJO.unidadJerarquica;
-  sheet.getCell("E19").value = PAC_ENCABEZADO_FIJO.codigoSicp;
+  sheet.getCell("E14").value = llamado.nivel_entidad ?? PAC_ENCABEZADO_FIJO.nivelEntidad;
+  sheet.getCell("E15").value = llamado.entidad ?? PAC_ENCABEZADO_FIJO.entidad;
+  sheet.getCell("E16").value = llamado.uoc_uep ?? PAC_ENCABEZADO_FIJO.uocUep;
+  sheet.getCell("E17").value = llamado.sub_uoc ?? PAC_ENCABEZADO_FIJO.subUoc;
+  sheet.getCell("E18").value = llamado.unidad_jerarquica ?? PAC_ENCABEZADO_FIJO.unidadJerarquica;
+  sheet.getCell("E19").value = llamado.codigo_sicp ?? PAC_ENCABEZADO_FIJO.codigoSicp;
 
   // --- Tabla 1: datos generales del llamado (fila 23) ---
   sheet.getCell(23, 3).value = llamado.nro_pac ?? "";
@@ -165,11 +210,22 @@ export async function generarPacWorkbook(llamadoId: string): Promise<{
   celdaMontoTotal.value = llamado.monto_total ?? 0;
   celdaMontoTotal.numFmt = "#,##0";
 
-  // --- Tabla 2: montos por ejercicio fiscal (filas 27/28, hasta 6 años) ---
+  // --- Tabla 2: montos por ejercicio fiscal (filas 27/28, hasta 6 años).
+  // Desde 2/10/2026 el dato de origen es `llamado_monto_ejercicio` (carga
+  // directa por ejercicio); si el llamado no tiene filas cargadas ahí, se
+  // mantiene la derivación anterior a partir de las líneas presupuestarias,
+  // para no dejar en blanco el reporte de llamados ya cargados antes de este
+  // cambio. ---
   const montoPorAnio = new Map<number, number>();
-  for (const l of lineas) {
-    if (l.ejercicio_fiscal != null) {
-      montoPorAnio.set(l.ejercicio_fiscal, (montoPorAnio.get(l.ejercicio_fiscal) ?? 0) + (l.monto ?? 0));
+  if (montosEjercicio.length > 0) {
+    for (const m of montosEjercicio) {
+      montoPorAnio.set(m.ejercicio_fiscal, (montoPorAnio.get(m.ejercicio_fiscal) ?? 0) + (m.monto ?? 0));
+    }
+  } else {
+    for (const l of lineas) {
+      if (l.ejercicio_fiscal != null) {
+        montoPorAnio.set(l.ejercicio_fiscal, (montoPorAnio.get(l.ejercicio_fiscal) ?? 0) + (l.monto ?? 0));
+      }
     }
   }
   COLUMNAS_ANIO.forEach((col, idx) => {
@@ -187,17 +243,37 @@ export async function generarPacWorkbook(llamadoId: string): Promise<{
   sheet.getCell("M31").value = descripcion;
 
   // --- Tabla 4: código catálogo y descripción del bien/servicio/consultoría y/u obra
-  // pública — campos manuales, en blanco si no se cargaron al alta/edición del
-  // llamado (28/8/2026, ítems 1 y 2 del feedback de Martin: no se inventan a partir
-  // del catálogo `objeto_gasto`) ---
-  sheet.getCell(34, 3).value = llamado.pac_codigo_catalogo ?? "";
-  sheet.getCell(34, 5).value = llamado.pac_descripcion_bien ?? "";
-  const celdaMontoCatalogo = sheet.getCell(34, 13);
-  celdaMontoCatalogo.value = llamado.monto_total ?? 0;
-  celdaMontoCatalogo.numFmt = "#,##0";
-  const celdaTotalTabla4 = sheet.getCell(41, 17);
-  celdaTotalTabla4.value = llamado.monto_total ?? 0;
-  celdaTotalTabla4.numFmt = "#,##0";
+  // pública (filas 34 a 40, total en 41, hasta 7 filas — mismo patrón que la Tabla 5).
+  // Desde 2/10/2026 el dato de origen es `pac_codigo_catalogo_detalle` (filas
+  // repetibles); si el llamado no tiene ninguna fila cargada ahí, se mantiene el
+  // comportamiento anterior con los campos manuales únicos `pac_codigo_catalogo`/
+  // `pac_descripcion_bien` (28/8/2026, ítems 1 y 2 del feedback de Martin: no se
+  // inventan a partir del catálogo `objeto_gasto`) ---
+  if (detalleCatalogo.length > 0) {
+    const filasCatalogo = detalleCatalogo.slice(0, MAX_FILAS_TABLA4);
+    let totalTabla4 = 0;
+    filasCatalogo.forEach((d, idx) => {
+      const fila = 34 + idx;
+      sheet.getCell(fila, 3).value = d.codigo ?? "";
+      sheet.getCell(fila, 5).value = d.descripcion ?? "";
+      const celdaMontoFila = sheet.getCell(fila, 13);
+      celdaMontoFila.value = d.monto ?? 0;
+      celdaMontoFila.numFmt = "#,##0";
+      totalTabla4 += d.monto ?? 0;
+    });
+    const celdaTotalTabla4 = sheet.getCell(41, 17);
+    celdaTotalTabla4.value = totalTabla4;
+    celdaTotalTabla4.numFmt = "#,##0";
+  } else {
+    sheet.getCell(34, 3).value = llamado.pac_codigo_catalogo ?? "";
+    sheet.getCell(34, 5).value = llamado.pac_descripcion_bien ?? "";
+    const celdaMontoCatalogo = sheet.getCell(34, 13);
+    celdaMontoCatalogo.value = llamado.monto_total ?? 0;
+    celdaMontoCatalogo.numFmt = "#,##0";
+    const celdaTotalTabla4 = sheet.getCell(41, 17);
+    celdaTotalTabla4.value = llamado.monto_total ?? 0;
+    celdaTotalTabla4.numFmt = "#,##0";
+  }
 
   // --- Tabla 5: desglose presupuestario por línea (filas 44 a 50, hasta 7 líneas) ---
   const lineasParaTabla = lineas.slice(0, MAX_FILAS_TABLA5);
