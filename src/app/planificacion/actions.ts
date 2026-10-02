@@ -64,27 +64,34 @@ async function validarModalidadObjeto(
   }
 }
 
-// Aviso no bloqueante de umbrales BM (pedido de Martin, 2/10/2026 — "Solo
-// aviso al cargar el llamado", no bloquea el guardado ni filtra el <select>).
-// Se calcula sobre el monto en USD del llamado (mismo criterio que el resto
-// del sistema: directo si moneda=USD, o monto_estimado_usd si moneda=PYG y
-// hay tipo de cambio cargado) y el nombre de la Modalidad/Método elegida.
+// Aviso no bloqueante de umbrales BM / jornales mínimos (pedido de Martin,
+// 2/10/2026 — "Solo aviso al cargar el llamado", no bloquea el guardado ni
+// filtra el <select>). Se calculan dos montos independientes a partir del
+// mismo llamado, cada uno para su propia regla de umbral (ver
+// src/lib/umbralesModalidad.ts):
+// - montoUsd: directo si moneda=USD, o monto_estimado_usd si moneda=PYG y
+//   hay tipo de cambio cargado (mismo criterio que el resto del sistema).
+// - montoPyg: directo si moneda=PYG, o monto_total * tipo_cambio si
+//   moneda=USD y hay tipo de cambio cargado (conversión inversa, solo para
+//   el umbral de jornales mínimos, que está definido en Gs.).
 async function calcularAvisoUmbral(
   supabase: Awaited<ReturnType<typeof createClient>>,
   objetoLlamado: string | null,
   modalidadId: string | null,
   moneda: string,
   montoTotal: number,
-  montoEstimadoUsd: number | null
+  montoEstimadoUsd: number | null,
+  tipoCambio: number | null
 ): Promise<string | null> {
   if (!modalidadId) return null;
   const montoUsd = moneda === "USD" ? montoTotal : montoEstimadoUsd;
-  if (montoUsd === null || montoUsd === undefined) return null;
+  const montoPyg = moneda === "PYG" ? montoTotal : tipoCambio && tipoCambio > 0 ? montoTotal * tipoCambio : null;
+  if ((montoUsd === null || montoUsd === undefined) && montoPyg === null) return null;
 
   const { data: modalidad } = await supabase.from("modalidad").select("nombre").eq("id", modalidadId).maybeSingle();
   if (!modalidad) return null;
 
-  return avisoUmbralModalidad(objetoLlamado, modalidad.nombre, montoUsd);
+  return avisoUmbralModalidad(objetoLlamado, modalidad.nombre, montoUsd ?? null, montoPyg);
 }
 
 function validarValorCatalogo(valor: string | null, opciones: readonly string[], campo: string) {
@@ -192,7 +199,8 @@ export async function crearLlamado(formData: FormData) {
     modalidadId,
     payload.moneda,
     montoTotal,
-    payload.monto_estimado_usd
+    payload.monto_estimado_usd,
+    tipoCambio
   );
 
   revalidatePath("/planificacion");
@@ -289,7 +297,8 @@ export async function actualizarLlamado(id: string, formData: FormData) {
     modalidadId,
     payload.moneda,
     montoTotal,
-    payload.monto_estimado_usd
+    payload.monto_estimado_usd,
+    tipoCambio
   );
 
   revalidatePath(`/planificacion/${id}`);
