@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { grupoModalidadPorObjeto } from "@/lib/modalidad";
 import { AMBITO_MERCADO_OPCIONES, APERTURA_MERCADO_OPCIONES } from "@/lib/mercado";
 import { REQUISITOS_CALIFICACION_OPCIONES } from "@/lib/requisitosCalificacion";
+import { avisoUmbralModalidad } from "@/lib/umbralesModalidad";
 
 function str(formData: FormData, key: string): string | null {
   const v = formData.get(key);
@@ -61,6 +62,29 @@ async function validarModalidadObjeto(
   if (modalidad.categoria !== grupoEsperado) {
     throw new Error("La modalidad seleccionada no es válida para el objeto del llamado.");
   }
+}
+
+// Aviso no bloqueante de umbrales BM (pedido de Martin, 2/10/2026 — "Solo
+// aviso al cargar el llamado", no bloquea el guardado ni filtra el <select>).
+// Se calcula sobre el monto en USD del llamado (mismo criterio que el resto
+// del sistema: directo si moneda=USD, o monto_estimado_usd si moneda=PYG y
+// hay tipo de cambio cargado) y el nombre de la Modalidad/Método elegida.
+async function calcularAvisoUmbral(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  objetoLlamado: string | null,
+  modalidadId: string | null,
+  moneda: string,
+  montoTotal: number,
+  montoEstimadoUsd: number | null
+): Promise<string | null> {
+  if (!modalidadId) return null;
+  const montoUsd = moneda === "USD" ? montoTotal : montoEstimadoUsd;
+  if (montoUsd === null || montoUsd === undefined) return null;
+
+  const { data: modalidad } = await supabase.from("modalidad").select("nombre").eq("id", modalidadId).maybeSingle();
+  if (!modalidad) return null;
+
+  return avisoUmbralModalidad(objetoLlamado, modalidad.nombre, montoUsd);
 }
 
 function validarValorCatalogo(valor: string | null, opciones: readonly string[], campo: string) {
@@ -162,8 +186,17 @@ export async function crearLlamado(formData: FormData) {
     throw new Error(error?.message ?? "No se pudo crear el llamado");
   }
 
+  const aviso = await calcularAvisoUmbral(
+    supabase,
+    objetoLlamado,
+    modalidadId,
+    payload.moneda,
+    montoTotal,
+    payload.monto_estimado_usd
+  );
+
   revalidatePath("/planificacion");
-  redirect(`/planificacion/${data.id}`);
+  redirect(`/planificacion/${data.id}${aviso ? `?aviso=${encodeURIComponent(aviso)}` : ""}`);
 }
 
 export async function actualizarLlamado(id: string, formData: FormData) {
@@ -250,9 +283,18 @@ export async function actualizarLlamado(id: string, formData: FormData) {
     throw new Error(error.message);
   }
 
+  const aviso = await calcularAvisoUmbral(
+    supabase,
+    objetoLlamado,
+    modalidadId,
+    payload.moneda,
+    montoTotal,
+    payload.monto_estimado_usd
+  );
+
   revalidatePath(`/planificacion/${id}`);
   revalidatePath("/planificacion");
-  redirect(`/planificacion/${id}`);
+  redirect(`/planificacion/${id}${aviso ? `?aviso=${encodeURIComponent(aviso)}` : ""}`);
 }
 
 // Valores fijos de Clase/Programa/Proyecto-Actividad para la línea
