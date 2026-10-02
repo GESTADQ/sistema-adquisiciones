@@ -69,6 +69,18 @@ function validarValorCatalogo(valor: string | null, opciones: readonly string[],
   }
 }
 
+// Descripción STEP: mientras "sincronizada" esté tildado, se completa sola
+// con el Nombre del llamado (dato único — no se pide el mismo texto dos
+// veces). Si se destilda, se guarda el texto propio que haya cargado el
+// usuario y queda marcada como no sincronizada (pedido de Martin, 2/10/2026).
+function calcularDescripcionStep(formData: FormData, nombreLlamado: string | null) {
+  const sincronizada = bool(formData, "descripcion_step_sincronizada");
+  if (sincronizada) {
+    return { descripcion_step: nombreLlamado, descripcion_step_sincronizada: true };
+  }
+  return { descripcion_step: str(formData, "descripcion_step"), descripcion_step_sincronizada: false };
+}
+
 export async function crearLlamado(formData: FormData) {
   const supabase = await createClient();
 
@@ -91,6 +103,8 @@ export async function crearLlamado(formData: FormData) {
   validarValorCatalogo(aperturaMercado, APERTURA_MERCADO_OPCIONES, "Apertura de mercado");
   validarValorCatalogo(requisitosCalificacion, REQUISITOS_CALIFICACION_OPCIONES, "Requisitos de Calificación");
 
+  const nombreLlamado = str(formData, "nombre_llamado");
+
   const payload = {
     nro_pac: str(formData, "nro_pac"),
     nro_proceso_interno: str(formData, "nro_proceso_interno"),
@@ -99,7 +113,7 @@ export async function crearLlamado(formData: FormData) {
     modalidad_id: modalidadId,
     componente_id: str(formData, "componente_id"),
     objeto_llamado: objetoLlamado,
-    nombre_llamado: str(formData, "nombre_llamado"),
+    nombre_llamado: nombreLlamado,
     moneda: str(formData, "moneda") ?? "PYG",
     monto_total: montoTotal,
     monto_estimado_usd: calcularMontoEstimadoUsd(montoTotal, tipoCambio),
@@ -123,6 +137,19 @@ export async function crearLlamado(formData: FormData) {
     opciones_evaluacion: str(formData, "opciones_evaluacion"),
     riesgo_esas: str(formData, "riesgo_esas"),
     tipo_documento_contratacion: str(formData, "tipo_documento_contratacion"),
+    nivel_entidad: str(formData, "nivel_entidad"),
+    entidad: str(formData, "entidad"),
+    uoc_uep: str(formData, "uoc_uep"),
+    sub_uoc: str(formData, "sub_uoc"),
+    unidad_jerarquica: str(formData, "unidad_jerarquica"),
+    codigo_sicp: str(formData, "codigo_sicp"),
+    nro_referencia_step: str(formData, "nro_referencia_step"),
+    categoria_step: str(formData, "categoria_step"),
+    metodo_adquisicion_step: str(formData, "metodo_adquisicion_step"),
+    componente_step: str(formData, "componente_step"),
+    numero_etapas: str(formData, "numero_etapas"),
+    numero_sobres: str(formData, "numero_sobres"),
+    ...calcularDescripcionStep(formData, nombreLlamado),
   };
 
   const { data, error } = await supabase
@@ -161,6 +188,8 @@ export async function actualizarLlamado(id: string, formData: FormData) {
   validarValorCatalogo(aperturaMercado, APERTURA_MERCADO_OPCIONES, "Apertura de mercado");
   validarValorCatalogo(requisitosCalificacion, REQUISITOS_CALIFICACION_OPCIONES, "Requisitos de Calificación");
 
+  const nombreLlamado = str(formData, "nombre_llamado");
+
   const payload = {
     nro_pac: str(formData, "nro_pac"),
     nro_proceso_interno: str(formData, "nro_proceso_interno"),
@@ -169,7 +198,7 @@ export async function actualizarLlamado(id: string, formData: FormData) {
     modalidad_id: modalidadId,
     componente_id: str(formData, "componente_id"),
     objeto_llamado: objetoLlamado,
-    nombre_llamado: str(formData, "nombre_llamado"),
+    nombre_llamado: nombreLlamado,
     moneda: str(formData, "moneda") ?? "PYG",
     monto_total: montoTotal,
     monto_estimado_usd: calcularMontoEstimadoUsd(montoTotal, tipoCambio),
@@ -199,6 +228,19 @@ export async function actualizarLlamado(id: string, formData: FormData) {
     opciones_evaluacion: str(formData, "opciones_evaluacion"),
     riesgo_esas: str(formData, "riesgo_esas"),
     tipo_documento_contratacion: str(formData, "tipo_documento_contratacion"),
+    nivel_entidad: str(formData, "nivel_entidad"),
+    entidad: str(formData, "entidad"),
+    uoc_uep: str(formData, "uoc_uep"),
+    sub_uoc: str(formData, "sub_uoc"),
+    unidad_jerarquica: str(formData, "unidad_jerarquica"),
+    codigo_sicp: str(formData, "codigo_sicp"),
+    nro_referencia_step: str(formData, "nro_referencia_step"),
+    categoria_step: str(formData, "categoria_step"),
+    metodo_adquisicion_step: str(formData, "metodo_adquisicion_step"),
+    componente_step: str(formData, "componente_step"),
+    numero_etapas: str(formData, "numero_etapas"),
+    numero_sobres: str(formData, "numero_sobres"),
+    ...calcularDescripcionStep(formData, nombreLlamado),
     actualizado_en: new Date().toISOString(),
   };
 
@@ -404,6 +446,122 @@ export async function eliminarHito(id: string, llamadoId: string) {
   if (error) {
     throw new Error(error.message);
   }
+
+  revalidatePath(`/planificacion/${llamadoId}`);
+  redirect(`/planificacion/${llamadoId}`);
+}
+
+// Montos por ejercicio fiscal del PAC (hasta 6 años, tabla 2 del Anexo
+// B-02-02) — pedido de Martin (2/10/2026). Tabla nueva 1-a-muchos,
+// independiente de las líneas presupuestarias (que también tienen su propio
+// ejercicio_fiscal por línea, para otro propósito: el desglose de la tabla 5).
+export async function crearMontoEjercicio(llamadoId: string, formData: FormData) {
+  const supabase = await createClient();
+
+  const ejercicioFiscal = num(formData, "ejercicio_fiscal");
+  if (!ejercicioFiscal) {
+    throw new Error("Debe indicar el ejercicio fiscal.");
+  }
+
+  const payload = {
+    llamado_id: llamadoId,
+    ejercicio_fiscal: ejercicioFiscal,
+    monto: num(formData, "monto") ?? 0,
+  };
+
+  const { error } = await supabase.from("llamado_monto_ejercicio").insert(payload);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath(`/planificacion/${llamadoId}`);
+  redirect(`/planificacion/${llamadoId}`);
+}
+
+export async function eliminarMontoEjercicio(id: string, llamadoId: string) {
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("llamado_monto_ejercicio").delete().eq("id", id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath(`/planificacion/${llamadoId}`);
+  redirect(`/planificacion/${llamadoId}`);
+}
+
+// Códigos de catálogo repetibles del PAC (tabla 4 del Anexo B-02-02) —
+// pedido de Martin (2/10/2026). `llamado.pac_codigo_catalogo` /
+// `llamado.pac_descripcion_bien` siguen existiendo tal cual (dato único:
+// mismo concepto, no se duplica) y se mantienen sincronizados automáticamente
+// con la única fila de detalle cuando hay exactamente una; si hay más de una,
+// el reporte PAC usa el detalle completo y esos dos campos dejan de ser
+// representativos por sí solos (ver src/lib/reportes/pac.ts).
+async function sincronizarCodigoCatalogoUnico(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  llamadoId: string
+) {
+  const { data: filas } = await supabase
+    .from("pac_codigo_catalogo_detalle")
+    .select("codigo, descripcion")
+    .eq("llamado_id", llamadoId)
+    .order("orden");
+
+  if (!filas || filas.length === 0) {
+    await supabase
+      .from("llamado")
+      .update({ pac_codigo_catalogo: null, pac_descripcion_bien: null })
+      .eq("id", llamadoId);
+  } else if (filas.length === 1) {
+    await supabase
+      .from("llamado")
+      .update({ pac_codigo_catalogo: filas[0].codigo, pac_descripcion_bien: filas[0].descripcion })
+      .eq("id", llamadoId);
+  }
+  // Si hay más de una fila se deja pac_codigo_catalogo/pac_descripcion_bien
+  // como estaban — el reporte PAC pasa a usar el detalle completo (ver pac.ts).
+}
+
+export async function crearCodigoCatalogoDetalle(llamadoId: string, formData: FormData) {
+  const supabase = await createClient();
+
+  const codigo = str(formData, "codigo");
+  if (!codigo) {
+    throw new Error("Debe indicar el código de catálogo.");
+  }
+
+  const payload = {
+    llamado_id: llamadoId,
+    codigo,
+    descripcion: str(formData, "descripcion"),
+    monto: num(formData, "monto") ?? 0,
+    orden: num(formData, "orden") ?? 0,
+  };
+
+  const { error } = await supabase.from("pac_codigo_catalogo_detalle").insert(payload);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await sincronizarCodigoCatalogoUnico(supabase, llamadoId);
+
+  revalidatePath(`/planificacion/${llamadoId}`);
+  redirect(`/planificacion/${llamadoId}`);
+}
+
+export async function eliminarCodigoCatalogoDetalle(id: string, llamadoId: string) {
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("pac_codigo_catalogo_detalle").delete().eq("id", id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await sincronizarCodigoCatalogoUnico(supabase, llamadoId);
 
   revalidatePath(`/planificacion/${llamadoId}`);
   redirect(`/planificacion/${llamadoId}`);
