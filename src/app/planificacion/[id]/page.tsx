@@ -14,6 +14,7 @@ import {
 import { HITOS_POR_CATEGORIA, esCategoriaLlamadoValida } from "@/lib/hitosStep";
 import AppNav from "@/components/AppNav";
 import { formatIdentificadorLlamado } from "@/lib/identificadorLlamado";
+import { DEPARTAMENTOS, valorDepartamento } from "@/lib/departamentos";
 
 const inputClass =
   "mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
@@ -283,8 +284,9 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Programa</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Subprograma</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Proyecto/Actividad</th>
-                    <th className="px-3 py-2 text-left font-medium text-slate-500">SGOG</th>
-                    <th className="px-3 py-2 text-left font-medium text-slate-500">Objeto del gasto</th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-500">
+                      SGOG (Clasificador Presupuestario)
+                    </th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Fuente financ.</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Departamento</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">Cuenta</th>
@@ -303,9 +305,10 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
                         <td className="px-3 py-2 text-slate-700">{l.programa ?? "—"}</td>
                         <td className="px-3 py-2 text-slate-700">{l.subprograma ?? "—"}</td>
                         <td className="px-3 py-2 text-slate-700">{l.proyecto_actividad ?? "—"}</td>
-                        <td className="px-3 py-2 text-slate-600">{l.sgog ?? "—"}</td>
                         <td className="px-3 py-2 text-slate-600">
-                          {objetoGastoLinea ? `${objetoGastoLinea.codigo} · ${objetoGastoLinea.descripcion}` : "—"}
+                          {objetoGastoLinea
+                            ? `${objetoGastoLinea.codigo} · ${objetoGastoLinea.descripcion}`
+                            : l.sgog ?? "—"}
                         </td>
                         <td className="px-3 py-2 text-slate-600">{l.fuente_financiamiento ?? "—"}</td>
                         <td className="px-3 py-2 text-slate-600">{l.departamento ?? "—"}</td>
@@ -339,11 +342,23 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
               </div>
               <div>
                 <label className={labelClass}>Clase</label>
-                <input name="clase" className={inputClass} />
+                <input
+                  name="clase"
+                  defaultValue="1"
+                  readOnly
+                  className={`${inputClass} bg-slate-50 text-slate-500`}
+                  title="Valor fijo del proyecto"
+                />
               </div>
               <div>
                 <label className={labelClass}>Programa</label>
-                <input name="programa" className={inputClass} />
+                <input
+                  name="programa"
+                  defaultValue="001"
+                  readOnly
+                  className={`${inputClass} bg-slate-50 text-slate-500`}
+                  title="Valor fijo del proyecto"
+                />
               </div>
               <div>
                 <label className={labelClass}>Subprograma</label>
@@ -351,16 +366,18 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
               </div>
               <div>
                 <label className={labelClass}>Proyecto/Actividad</label>
-                <input name="proyecto_actividad" className={inputClass} />
+                <input
+                  name="proyecto_actividad"
+                  defaultValue="57"
+                  readOnly
+                  className={`${inputClass} bg-slate-50 text-slate-500`}
+                  title="Valor fijo del proyecto"
+                />
               </div>
               <div>
-                <label className={labelClass}>SGOG</label>
-                <input name="sgog" className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Objeto del gasto</label>
-                <select name="objeto_gasto_id" className={inputClass} defaultValue="">
-                  <option value="">— Sin definir —</option>
+                <label className={labelClass}>SGOG (Clasificador Presupuestario) *</label>
+                <select name="objeto_gasto_id" className={inputClass} defaultValue="" required>
+                  <option value="">— Seleccionar —</option>
                   {objetosGasto?.map((o) => (
                     <option key={o.id} value={o.id}>
                       {o.codigo} · {o.descripcion}
@@ -369,16 +386,35 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
                 </select>
               </div>
               <div>
-                <label className={labelClass}>Fuente de financiamiento</label>
-                <input name="fuente_financiamiento" className={inputClass} />
+                <label className={labelClass}>Fuente de financiamiento (F.F.)</label>
+                <input
+                  name="fuente_financiamiento"
+                  defaultValue="20"
+                  readOnly
+                  className={`${inputClass} bg-slate-50 text-slate-500`}
+                  title="Valor fijo del proyecto"
+                />
               </div>
               <div>
-                <label className={labelClass}>Organismo financiador</label>
-                <input name="organismo_financiador" className={inputClass} />
+                <label className={labelClass}>Organismo financiador (O.F.)</label>
+                <input
+                  name="organismo_financiador"
+                  defaultValue="402"
+                  readOnly
+                  className={`${inputClass} bg-slate-50 text-slate-500`}
+                  title="Valor fijo del proyecto"
+                />
               </div>
               <div>
                 <label className={labelClass}>Departamento</label>
-                <input name="departamento" className={inputClass} />
+                <select name="departamento" className={inputClass} defaultValue="">
+                  <option value="">— Sin definir —</option>
+                  {DEPARTAMENTOS.map((d) => (
+                    <option key={d.codigo} value={valorDepartamento(d)}>
+                      {valorDepartamento(d)}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className={labelClass}>Cuenta</label>
