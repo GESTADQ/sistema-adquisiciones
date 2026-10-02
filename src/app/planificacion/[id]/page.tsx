@@ -79,10 +79,11 @@ function cronogramaEstado(etapa: {
   return { label: "Sin fecha", color: "bg-slate-100 text-slate-500" };
 }
 
-type PageProps = { params: Promise<{ id: string }> };
+type PageProps = { params: Promise<{ id: string }>; searchParams: Promise<{ aviso?: string }> };
 
-export default async function LlamadoDetallePage({ params }: PageProps) {
+export default async function LlamadoDetallePage({ params, searchParams }: PageProps) {
   const { id } = await params;
+  const { aviso } = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -211,6 +212,12 @@ export default async function LlamadoDetallePage({ params }: PageProps) {
       </header>
 
       <main className="space-y-6 p-6">
+        {aviso && (
+          <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
+            <span className="font-medium">Aviso de umbral BM (no bloqueante):</span> {aviso}
+          </div>
+        )}
+
         {/* Datos generales */}
         <section className="rounded-lg border border-slate-200 bg-white p-5">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
