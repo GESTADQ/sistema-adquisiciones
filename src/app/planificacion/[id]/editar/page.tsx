@@ -4,6 +4,8 @@ import Link from "next/link";
 import { actualizarLlamado } from "../../actions";
 import CategoriaLlamadoCampos from "../../CategoriaLlamadoCampos";
 import ObjetoModalidadCampos from "../../ObjetoModalidadCampos";
+import EncabezadoPacCampos from "../../EncabezadoPacCampos";
+import StepCampos from "../../StepCampos";
 import AppNav from "@/components/AppNav";
 import { formatIdentificadorLlamado } from "@/lib/identificadorLlamado";
 import { AMBITO_MERCADO_OPCIONES, APERTURA_MERCADO_OPCIONES } from "@/lib/mercado";
@@ -98,6 +100,15 @@ export default async function EditarLlamadoPage({ params }: PageProps) {
               className={inputClass}
             />
           </div>
+
+          <EncabezadoPacCampos
+            nivelEntidadInicial={llamado.nivel_entidad}
+            entidadInicial={llamado.entidad}
+            uocUepInicial={llamado.uoc_uep}
+            subUocInicial={llamado.sub_uoc}
+            unidadJerarquicaInicial={llamado.unidad_jerarquica}
+            codigoSicpInicial={llamado.codigo_sicp}
+          />
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
@@ -258,6 +269,17 @@ export default async function EditarLlamadoPage({ params }: PageProps) {
               />
             </div>
           </div>
+
+          <StepCampos
+            nroReferenciaStepInicial={llamado.nro_referencia_step}
+            categoriaStepInicial={llamado.categoria_step}
+            metodoAdquisicionStepInicial={llamado.metodo_adquisicion_step}
+            componenteStepInicial={llamado.componente_step}
+            numeroEtapasInicial={llamado.numero_etapas}
+            numeroSobresInicial={llamado.numero_sobres}
+            descripcionStepInicial={llamado.descripcion_step}
+            descripcionStepSincronizadaInicial={llamado.descripcion_step_sincronizada}
+          />
 
           <div className="flex gap-6">
             <label className="flex items-center gap-2 text-sm text-slate-700">
